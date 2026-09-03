@@ -66,6 +66,7 @@ final class FriendCreationPipelineTests: XCTestCase {
         XCTAssertEqual(profile.name, "小林")
         XCTAssertEqual(profile.styleSummary.catchphrases, ["慢慢说"])
         XCTAssertTrue(effects.contains(.friendReady(profile)))
+        XCTAssertEqual(pipeline.stage, .ready)
     }
 
     func testLowConfidenceAnalysisWaitsForConfirmationBeforeBuildingFriend() {
@@ -86,6 +87,7 @@ final class FriendCreationPipelineTests: XCTestCase {
         }
         XCTAssertEqual(pending, result)
         XCTAssertTrue(effects.contains(.confirmationRequired(result)))
+        XCTAssertEqual(pipeline.stage, .awaitingConfirmation)
         XCTAssertNil(builder.receivedAnalysis)
 
         let confirmationEffects = pipeline.handle(.confirmAnalysis(confirmedMemoryIDs: Set(result.candidateMemories.map(\.id))))
@@ -94,6 +96,7 @@ final class FriendCreationPipelineTests: XCTestCase {
         }
         XCTAssertEqual(builder.receivedAnalysis, result)
         XCTAssertTrue(confirmationEffects.contains(.friendReady(profile)))
+        XCTAssertEqual(pipeline.stage, .ready)
     }
 
     func testConflictingAnalysisCanBeRejectedWithoutCreatingFriend() {

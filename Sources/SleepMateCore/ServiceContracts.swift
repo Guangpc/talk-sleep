@@ -19,7 +19,7 @@ public protocol TTSService {
 
 /// Material analysis adapter. The Foundation implementation remains fake/injected.
 public protocol MaterialAnalysisService {
-    func analyze(materials: [SourceMaterial]) async throws -> FriendAnalysis
+    func analyze(materials: [SourceMaterial]) -> FriendAnalysis
 }
 
 /// Persistence boundary for profiles and sleep records; storage policy is implemented later.

@@ -25,9 +25,7 @@ public struct FriendAnalysis: Equatable, Sendable {
     }
 }
 
-public protocol FriendMaterialAnalyzer {
-    func analyze(materials: [SourceMaterial]) -> FriendAnalysis
-}
+public typealias FriendMaterialAnalyzer = MaterialAnalysisService
 
 public protocol AIFriendProfileBuilder {
     func buildProfile(
@@ -73,6 +71,7 @@ public enum FriendCreationEffect: Equatable, Sendable {
 /// Coordinates material analysis without owning OCR, ASR, storage, or network code.
 public struct FriendCreationPipeline {
     public private(set) var state: FriendCreationState = .idle
+    public private(set) var stage: FriendCreationStage = .importing
     public let minimumConfidence: Double
 
     private let name: String
@@ -100,16 +99,19 @@ public struct FriendCreationPipeline {
         case let .begin(materials):
             guard state == .idle || state == .rejected else { return [] }
             state = .analyzing
+            stage = .importing
+            var effects: [FriendCreationEffect] = [.stageChanged(.importing)]
+            stage = .ocrAndTranscription
+            effects.append(.stageChanged(.ocrAndTranscription))
+            stage = .speakerSeparation
+            effects.append(.stageChanged(.speakerSeparation))
+            stage = .analysis
             let result = analyzer.analyze(materials: materials)
-            var effects: [FriendCreationEffect] = [
-                .stageChanged(.importing),
-                .stageChanged(.ocrAndTranscription),
-                .stageChanged(.speakerSeparation),
-                .stageChanged(.analysis),
-                .analysisCompleted(result)
-            ]
+            effects.append(.stageChanged(.analysis))
+            effects.append(.analysisCompleted(result))
             if result.confidence < minimumConfidence || result.hasConflict {
                 state = .awaitingConfirmation(result)
+                stage = .awaitingConfirmation
                 effects.append(.stageChanged(.awaitingConfirmation))
                 effects.append(.confirmationRequired(result))
                 return effects
@@ -120,8 +122,10 @@ public struct FriendCreationPipeline {
                 analysis: result,
                 confirmedMemories: []
             )
+            stage = .buildingProfile
             state = .ready(profile)
             effects.append(.stageChanged(.buildingProfile))
+            stage = .ready
             effects.append(.stageChanged(.ready))
             effects.append(.friendReady(profile))
             return effects
@@ -134,7 +138,9 @@ public struct FriendCreationPipeline {
                 analysis: analysis,
                 confirmedMemories: confirmedMemories
             )
+            stage = .buildingProfile
             state = .ready(profile)
+            stage = .ready
             return [.stageChanged(.buildingProfile), .stageChanged(.ready), .friendReady(profile)]
         case .rejectAnalysis:
             guard case .awaitingConfirmation = state else { return [] }
