@@ -30,12 +30,27 @@ public protocol FriendMaterialAnalyzer {
 }
 
 public protocol AIFriendProfileBuilder {
-    func buildProfile(name: String, avatarReference: String, analysis: FriendAnalysis) -> AIFriendProfile
+    func buildProfile(
+        name: String,
+        avatarReference: String,
+        analysis: FriendAnalysis,
+        confirmedMemories: [Memory]
+    ) -> AIFriendProfile
+}
+
+public enum FriendCreationStage: String, Equatable, Sendable {
+    case importing
+    case ocrAndTranscription
+    case speakerSeparation
+    case analysis
+    case awaitingConfirmation
+    case buildingProfile
+    case ready
 }
 
 public enum FriendCreationEvent: Equatable, Sendable {
     case begin(materials: [SourceMaterial])
-    case confirmAnalysis
+    case confirmAnalysis(confirmedMemoryIDs: Set<UUID>)
     case rejectAnalysis
 }
 
@@ -48,6 +63,7 @@ public enum FriendCreationState: Equatable, Sendable {
 }
 
 public enum FriendCreationEffect: Equatable, Sendable {
+    case stageChanged(FriendCreationStage)
     case analysisCompleted(FriendAnalysis)
     case confirmationRequired(FriendAnalysis)
     case friendReady(AIFriendProfile)
@@ -85,21 +101,41 @@ public struct FriendCreationPipeline {
             guard state == .idle || state == .rejected else { return [] }
             state = .analyzing
             let result = analyzer.analyze(materials: materials)
-            var effects: [FriendCreationEffect] = [.analysisCompleted(result)]
+            var effects: [FriendCreationEffect] = [
+                .stageChanged(.importing),
+                .stageChanged(.ocrAndTranscription),
+                .stageChanged(.speakerSeparation),
+                .stageChanged(.analysis),
+                .analysisCompleted(result)
+            ]
             if result.confidence < minimumConfidence || result.hasConflict {
                 state = .awaitingConfirmation(result)
+                effects.append(.stageChanged(.awaitingConfirmation))
                 effects.append(.confirmationRequired(result))
                 return effects
             }
-            let profile = builder.buildProfile(name: name, avatarReference: avatarReference, analysis: result)
+            let profile = builder.buildProfile(
+                name: name,
+                avatarReference: avatarReference,
+                analysis: result,
+                confirmedMemories: []
+            )
             state = .ready(profile)
+            effects.append(.stageChanged(.buildingProfile))
+            effects.append(.stageChanged(.ready))
             effects.append(.friendReady(profile))
             return effects
-        case .confirmAnalysis:
+        case let .confirmAnalysis(confirmedMemoryIDs):
             guard case let .awaitingConfirmation(analysis) = state else { return [] }
-            let profile = builder.buildProfile(name: name, avatarReference: avatarReference, analysis: analysis)
+            let confirmedMemories = analysis.candidateMemories.filter { confirmedMemoryIDs.contains($0.id) }
+            let profile = builder.buildProfile(
+                name: name,
+                avatarReference: avatarReference,
+                analysis: analysis,
+                confirmedMemories: confirmedMemories
+            )
             state = .ready(profile)
-            return [.friendReady(profile)]
+            return [.stageChanged(.buildingProfile), .stageChanged(.ready), .friendReady(profile)]
         case .rejectAnalysis:
             guard case .awaitingConfirmation = state else { return [] }
             state = .rejected

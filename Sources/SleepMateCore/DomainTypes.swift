@@ -65,16 +65,59 @@ public enum SourceMaterialKind: String, Equatable, Sendable {
     case audio
 }
 
+public enum SpeakerAttribution: String, Equatable, Sendable {
+    case user
+    case friend
+    case unknown
+    case needsConfirmation
+}
+
 public struct SourceMaterial: Identifiable, Equatable, Sendable {
     public let id: UUID
     public let kind: SourceMaterialKind
     public let fileReference: String
     public let importedAt: Date
+    public var speakerAttribution: SpeakerAttribution
 
-    public init(id: UUID, kind: SourceMaterialKind, fileReference: String, importedAt: Date) {
+    public init(
+        id: UUID,
+        kind: SourceMaterialKind,
+        fileReference: String,
+        importedAt: Date,
+        speakerAttribution: SpeakerAttribution = .unknown
+    ) {
         self.id = id
         self.kind = kind
         self.fileReference = fileReference
+        self.importedAt = importedAt
+        self.speakerAttribution = speakerAttribution
+    }
+}
+
+public enum MaterialProcessingStage: String, Equatable, Sendable {
+    case imported
+    case ocrAndTranscription
+    case speakerSeparation
+    case analysis
+    case awaitingConfirmation
+    case ready
+}
+
+public struct SourceMaterialBatch: Identifiable, Equatable, Sendable {
+    public let id: UUID
+    public var materials: [SourceMaterial]
+    public var stage: MaterialProcessingStage
+    public let importedAt: Date
+
+    public init(
+        id: UUID,
+        materials: [SourceMaterial],
+        stage: MaterialProcessingStage = .imported,
+        importedAt: Date
+    ) {
+        self.id = id
+        self.materials = materials
+        self.stage = stage
         self.importedAt = importedAt
     }
 }
@@ -130,11 +173,24 @@ public struct SleepRecord: Equatable, Sendable {
     public let possibleSleepAt: Date
     public var wakeAt: Date?
     public var wakeSource: WakeSource?
+    public var summary: String?
+    public var sleepAdvice: [String]
+    public var recommendedTopics: [String]
 
-    public init(possibleSleepAt: Date, wakeAt: Date? = nil, wakeSource: WakeSource? = nil) {
+    public init(
+        possibleSleepAt: Date,
+        wakeAt: Date? = nil,
+        wakeSource: WakeSource? = nil,
+        summary: String? = nil,
+        sleepAdvice: [String] = [],
+        recommendedTopics: [String] = []
+    ) {
         self.possibleSleepAt = possibleSleepAt
         self.wakeAt = wakeAt
         self.wakeSource = wakeSource
+        self.summary = summary
+        self.sleepAdvice = sleepAdvice
+        self.recommendedTopics = recommendedTopics
     }
 
     public var duration: TimeInterval? {

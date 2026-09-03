@@ -56,3 +56,37 @@ final class DomainTypesTests: XCTestCase {
         XCTAssertEqual(record.wakeSource, .lockScreenAction)
     }
 }
+
+extension DomainTypesTests {
+    func testMaterialBatchTracksProcessingStageAndSpeakerAttribution() {
+        let material = SourceMaterial(
+            id: UUID(),
+            kind: .audio,
+            fileReference: "file://sample",
+            importedAt: Date(timeIntervalSince1970: 100),
+            speakerAttribution: .needsConfirmation
+        )
+        let batch = SourceMaterialBatch(
+            id: UUID(),
+            materials: [material],
+            stage: .speakerSeparation,
+            importedAt: material.importedAt
+        )
+
+        XCTAssertEqual(batch.stage, .speakerSeparation)
+        XCTAssertEqual(batch.materials.first?.speakerAttribution, .needsConfirmation)
+    }
+
+    func testSleepRecordCarriesSummaryAdviceAndRecommendedTopics() {
+        let record = SleepRecord(
+            possibleSleepAt: Date(timeIntervalSince1970: 100),
+            summary: "聊了今天的工作",
+            sleepAdvice: ["睡前减少屏幕刺激"],
+            recommendedTopics: ["明天最期待的事"]
+        )
+
+        XCTAssertEqual(record.summary, "聊了今天的工作")
+        XCTAssertEqual(record.sleepAdvice, ["睡前减少屏幕刺激"])
+        XCTAssertEqual(record.recommendedTopics, ["明天最期待的事"])
+    }
+}

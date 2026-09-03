@@ -93,7 +93,7 @@ final class SleepSessionStateMachineTests: XCTestCase {
         _ = machine.handle(.tick)
 
         clock.now = Date(timeIntervalSince1970: 10 * 60 * 60 + 601)
-        XCTAssertEqual(machine.handle(.appOpened), [.wakeConfirmationRequired])
+        XCTAssertEqual(machine.handle(.appOpened), [.wakeConfirmationRequired, .wakeAutofillSuppressed])
         guard case .awaitingWakeConfirmation = machine.state else {
             return XCTFail("Opening after ten hours must not auto-complete wake")
         }
@@ -108,5 +108,44 @@ final class SleepSessionStateMachineTests: XCTestCase {
         XCTAssertEqual(record.wakeAt, wake)
         XCTAssertEqual(record.wakeSource, .manualEntry)
         XCTAssertEqual(machine.state, .completed(record: record))
+    }
+}
+
+extension SleepSessionStateMachineTests {
+    func testAppOpenedAfterWakeWindowSuppressesAutofillAndAllowsManualEdit() {
+        let start = Date(timeIntervalSince1970: 0)
+        let clock = TestClock(start)
+        var machine = SleepSessionStateMachine(startedAt: start, clock: clock)
+        clock.now = Date(timeIntervalSince1970: 570)
+        _ = machine.handle(.tick)
+        clock.now = Date(timeIntervalSince1970: 600)
+        _ = machine.handle(.tick)
+
+        clock.now = Date(timeIntervalSince1970: 10 * 60 * 60 + 601)
+        XCTAssertEqual(machine.handle(.appOpened), [.wakeConfirmationRequired, .wakeAutofillSuppressed])
+        guard case .awaitingWakeConfirmation = machine.state else {
+            return XCTFail("App opening must not complete wake automatically")
+        }
+
+        let editedWake = Date(timeIntervalSince1970: 10 * 60 * 60 + 900)
+        XCTAssertEqual(machine.handle(.editWake(at: editedWake, source: .manualEntry)), [.wakeRecordUpdated(record: SleepRecord(possibleSleepAt: Date(timeIntervalSince1970: 600), wakeAt: editedWake, wakeSource: .manualEntry))])
+        guard case .completed = machine.state else {
+            return XCTFail("Manual edit should complete the wake record")
+        }
+    }
+
+    func testPauseIsIgnoredAfterPossibleSleep() {
+        let start = Date(timeIntervalSince1970: 0)
+        let clock = TestClock(start)
+        var machine = SleepSessionStateMachine(startedAt: start, clock: clock)
+        clock.now = Date(timeIntervalSince1970: 570)
+        _ = machine.handle(.tick)
+        clock.now = Date(timeIntervalSince1970: 600)
+        _ = machine.handle(.tick)
+
+        XCTAssertEqual(machine.handle(.pauseListening), [])
+        guard case .awaitingWakeConfirmation = machine.state else {
+            return XCTFail("Pause must not alter a completed listening phase")
+        }
     }
 }

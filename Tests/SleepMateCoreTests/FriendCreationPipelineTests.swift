@@ -20,7 +20,7 @@ final class FriendCreationPipelineTests: XCTestCase {
     private final class FakeBuilder: AIFriendProfileBuilder {
         var receivedAnalysis: FriendAnalysis?
 
-        func buildProfile(name: String, avatarReference: String, analysis: FriendAnalysis) -> AIFriendProfile {
+        func buildProfile(name: String, avatarReference: String, analysis: FriendAnalysis, confirmedMemories: [Memory]) -> AIFriendProfile {
             receivedAnalysis = analysis
             return AIFriendProfile(
                 id: UUID(),
@@ -28,7 +28,7 @@ final class FriendCreationPipelineTests: XCTestCase {
                 avatarReference: avatarReference,
                 voiceConfiguration: analysis.voiceConfiguration,
                 styleSummary: analysis.styleSummary,
-                memories: analysis.candidateMemories
+                memories: confirmedMemories
             )
         }
     }
@@ -88,7 +88,7 @@ final class FriendCreationPipelineTests: XCTestCase {
         XCTAssertTrue(effects.contains(.confirmationRequired(result)))
         XCTAssertNil(builder.receivedAnalysis)
 
-        let confirmationEffects = pipeline.handle(.confirmAnalysis)
+        let confirmationEffects = pipeline.handle(.confirmAnalysis(confirmedMemoryIDs: Set(result.candidateMemories.map(\.id))))
         guard case let .ready(profile) = pipeline.state else {
             return XCTFail("Expected ready state after confirmation")
         }
@@ -110,5 +110,28 @@ final class FriendCreationPipelineTests: XCTestCase {
         XCTAssertEqual(pipeline.handle(.rejectAnalysis), [.creationRejected])
         XCTAssertEqual(pipeline.state, .rejected)
         XCTAssertNil(builder.receivedAnalysis)
+    }
+}
+
+
+extension FriendCreationPipelineTests {
+    func testCandidateMemoriesStayUnconfirmedUntilExplicitlySelected() {
+        let result = analysis(confidence: 0.4)
+        let builder = FakeBuilder()
+        var pipeline = FriendCreationPipeline(
+            name: "小林",
+            avatarReference: "avatar://xiaolin",
+            analyzer: FakeAnalyzer(result: result),
+            builder: builder
+        )
+
+        _ = pipeline.handle(.begin(materials: []))
+        let effects = pipeline.handle(.confirmAnalysis(confirmedMemoryIDs: []))
+
+        guard case let .ready(profile) = pipeline.state else {
+            return XCTFail("Expected ready state after analysis confirmation")
+        }
+        XCTAssertTrue(profile.memories.isEmpty)
+        XCTAssertTrue(effects.contains(.friendReady(profile)))
     }
 }

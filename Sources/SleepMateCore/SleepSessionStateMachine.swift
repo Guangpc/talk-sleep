@@ -24,6 +24,7 @@ public enum SleepSessionEffect: Equatable, Sendable {
     case askIfAwake
     case enteredPossiblyAsleep(at: Date)
     case wakeConfirmationRequired
+    case wakeAutofillSuppressed
     case listeningPaused
     case listeningResumed
     case chatEnded
@@ -67,6 +68,12 @@ public struct SleepSessionStateMachine {
             return []
         case .pauseListening:
             guard state != .paused, state != .ended else { return [] }
+            switch state {
+            case .chatting, .checkingIn:
+                break
+            case .awaitingWakeConfirmation, .completed, .paused, .ended:
+                return []
+            }
             stateBeforePause = state
             pausedAt = clock.now
             state = .paused
@@ -85,9 +92,13 @@ public struct SleepSessionStateMachine {
             pausedAt = nil
             return [.chatEnded]
         case .appOpened:
-            guard case .awaitingWakeConfirmation = state else { return [] }
+            guard case let .awaitingWakeConfirmation(record) = state else { return [] }
             // Opening the app never silently becomes a wake time, especially after ten hours.
-            return [.wakeConfirmationRequired]
+            var effects: [SleepSessionEffect] = [.wakeConfirmationRequired]
+            if clock.now.timeIntervalSince(record.possibleSleepAt) > durations.wakeConfirmationWindow {
+                effects.append(.wakeAutofillSuppressed)
+            }
+            return effects
         case let .confirmWake(source):
             guard case let .awaitingWakeConfirmation(record) = state else { return [] }
             var completed = record
@@ -96,12 +107,16 @@ public struct SleepSessionStateMachine {
             state = .completed(record: completed)
             return [.wakeConfirmed(record: completed)]
         case let .editWake(at, source):
-            guard case let .completed(record) = state else { return [] }
-            var updated = record
-            updated.wakeAt = at
-            updated.wakeSource = source
-            state = .completed(record: updated)
-            return [.wakeRecordUpdated(record: updated)]
+            switch state {
+            case let .awaitingWakeConfirmation(record), let .completed(record):
+                var updated = record
+                updated.wakeAt = at
+                updated.wakeSource = source
+                state = .completed(record: updated)
+                return [.wakeRecordUpdated(record: updated)]
+            case .chatting, .checkingIn, .paused, .ended:
+                return []
+            }
         }
     }
 
