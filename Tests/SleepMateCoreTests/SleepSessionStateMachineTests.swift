@@ -67,6 +67,22 @@ final class SleepSessionStateMachineTests: XCTestCase {
         XCTAssertEqual(machine.handle(.userSpeech), [])
     }
 
+    func testPausingListeningFreezesSilenceTimer() {
+        let start = Date(timeIntervalSince1970: 0)
+        let clock = TestClock(start)
+        var machine = SleepSessionStateMachine(startedAt: start, clock: clock)
+
+        clock.now = start
+        XCTAssertEqual(machine.handle(.pauseListening), [.listeningPaused])
+        clock.now = Date(timeIntervalSince1970: 10_000)
+        XCTAssertEqual(machine.handle(.resumeListening), [.listeningResumed])
+
+        clock.now = Date(timeIntervalSince1970: 10_000 + 569)
+        XCTAssertEqual(machine.handle(.tick), [])
+        clock.now = Date(timeIntervalSince1970: 10_000 + 570)
+        XCTAssertEqual(machine.handle(.tick), [.askIfAwake])
+    }
+
     func testMoreThanTenHoursDoesNotAutoFillWakeTimeButExplicitConfirmationWorks() {
         let start = Date(timeIntervalSince1970: 0)
         let clock = TestClock(start)

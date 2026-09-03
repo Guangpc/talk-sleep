@@ -38,6 +38,7 @@ public struct SleepSessionStateMachine {
 
     private let clock: any SleepMateClock
     private var stateBeforePause: SleepSessionState?
+    private var pausedAt: Date?
 
     public init(
         startedAt: Date,
@@ -48,6 +49,7 @@ public struct SleepSessionStateMachine {
         self.durations = durations
         self.clock = clock
         self.stateBeforePause = nil
+        self.pausedAt = nil
     }
 
     @discardableResult
@@ -66,17 +68,21 @@ public struct SleepSessionStateMachine {
         case .pauseListening:
             guard state != .paused, state != .ended else { return [] }
             stateBeforePause = state
+            pausedAt = clock.now
             state = .paused
             return [.listeningPaused]
         case .resumeListening:
             guard state == .paused, let stateBeforePause else { return [] }
-            state = stateBeforePause
+            let pauseDuration = pausedAt.map { max(0, clock.now.timeIntervalSince($0)) } ?? 0
+            state = shifted(stateBeforePause, by: pauseDuration)
             self.stateBeforePause = nil
+            self.pausedAt = nil
             return [.listeningResumed]
         case .endChat:
             guard state != .ended else { return [] }
             state = .ended
             stateBeforePause = nil
+            pausedAt = nil
             return [.chatEnded]
         case .appOpened:
             guard case .awaitingWakeConfirmation = state else { return [] }
@@ -96,6 +102,21 @@ public struct SleepSessionStateMachine {
             updated.wakeSource = source
             state = .completed(record: updated)
             return [.wakeRecordUpdated(record: updated)]
+        }
+    }
+
+    private func shifted(_ state: SleepSessionState, by duration: TimeInterval) -> SleepSessionState {
+        guard duration > 0 else { return state }
+        switch state {
+        case let .chatting(lastUserSpeechAt):
+            return .chatting(lastUserSpeechAt: lastUserSpeechAt.addingTimeInterval(duration))
+        case let .checkingIn(promptedAt, lastUserSpeechAt):
+            return .checkingIn(
+                promptedAt: promptedAt.addingTimeInterval(duration),
+                lastUserSpeechAt: lastUserSpeechAt.addingTimeInterval(duration)
+            )
+        case .awaitingWakeConfirmation, .completed, .paused, .ended:
+            return state
         }
     }
 
