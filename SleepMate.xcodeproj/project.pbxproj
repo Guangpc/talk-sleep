@@ -3,26 +3,36 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 71;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		A10000010000000000000001 /* SleepMateApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000001 /* SleepMateApp.swift */; };
 		A10000010000000000000002 /* FriendListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000002 /* FriendListView.swift */; };
-		A10000010000000000000003 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000003 /* Localizable.strings */; };
-		A10000010000000000000004 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000004 /* Localizable.strings */; };
+		A10000010000000000000003 /* zh-Hans in Resources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000003 /* zh-Hans */; };
+		A10000010000000000000004 /* en in Resources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000004 /* en */; };
 		A10000010000000000000005 /* SleepMateCore in Frameworks */ = {isa = PBXBuildFile; productRef = A60000010000000000000001 /* SleepMateCore */; };
 		B10000010000000000000001 /* SleepMateAppLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000001 /* SleepMateAppLaunchTests.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		B80000010000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A50000010000000000000002 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A50000010000000000000001;
+			remoteInfo = SleepMate;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		164714953049789D0080B43C /* SleepMateUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SleepMateUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A20000010000000000000001 /* SleepMateApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepMateApp.swift; sourceTree = "<group>"; };
 		A20000010000000000000002 /* FriendListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendListView.swift; sourceTree = "<group>"; };
-		A20000010000000000000003 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
-		A20000010000000000000004 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = "en.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		A20000010000000000000003 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		A20000010000000000000004 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		A20000010000000000000005 /* SleepMate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SleepMate.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B20000010000000000000001 /* SleepMateAppLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepMateAppLaunchTests.swift; sourceTree = "<group>"; };
-		B20000010000000000000002 /* SleepMateUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SleepMateUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -48,7 +58,7 @@
 			isa = PBXGroup;
 			children = (
 				A40000010000000000000002 /* App */,
-				A40000010000000000000004 /* Tests */,
+				A40000010000000000000004 /* App */,
 				A40000010000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -67,11 +77,12 @@
 			isa = PBXGroup;
 			children = (
 				A20000010000000000000005 /* SleepMate.app */,
+				164714953049789D0080B43C /* SleepMateUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		A40000010000000000000004 /* Tests */ = {
+		A40000010000000000000004 /* App */ = {
 			isa = PBXGroup;
 			children = (
 				B20000010000000000000001 /* SleepMateAppLaunchTests.swift */,
@@ -82,8 +93,8 @@
 		A40000010000000000000005 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				A20000010000000000000003 /* Localizable.strings */,
-				A20000010000000000000004 /* Localizable.strings */,
+				A20000010000000000000003 /* zh-Hans */,
+				A20000010000000000000004 /* en */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -91,23 +102,6 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		B50000010000000000000001 /* SleepMateUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = B70000010000000000000001 /* Build configuration list for PBXNativeTarget "SleepMateUITests" */;
-			buildPhases = (
-				B30000010000000000000001 /* Sources */,
-				B30000010000000000000002 /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				B40000010000000000000001 /* PBXTargetDependency */,
-			);
-			name = SleepMateUITests;
-			productName = SleepMateUITests;
-			productReference = B20000010000000000000002 /* SleepMateUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
 		A50000010000000000000001 /* SleepMate */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A70000010000000000000002 /* Build configuration list for PBXNativeTarget "SleepMate" */;
@@ -128,25 +122,24 @@
 			productReference = A20000010000000000000005 /* SleepMate.app */;
 			productType = "com.apple.product-type.application";
 		};
+		B50000010000000000000001 /* SleepMateUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B70000010000000000000001 /* Build configuration list for PBXNativeTarget "SleepMateUITests" */;
+			buildPhases = (
+				B30000010000000000000001 /* Sources */,
+				B30000010000000000000002 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B40000010000000000000001 /* PBXTargetDependency */,
+			);
+			name = SleepMateUITests;
+			productName = SleepMateUITests;
+			productReference = 164714953049789D0080B43C /* SleepMateUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
-
-/* Begin PBXContainerItemProxy section */
-		B80000010000000000000001 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A50000010000000000000002 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = A50000010000000000000001;
-			remoteInfo = SleepMate;
-		};
-/* End PBXContainerItemProxy section */
-
-/* Begin PBXTargetDependency section */
-		B40000010000000000000001 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = A50000010000000000000001 /* SleepMate */;
-			targetProxy = B80000010000000000000001 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin PBXProject section */
 		A50000010000000000000002 /* Project object */ = {
@@ -175,7 +168,7 @@
 			);
 			mainGroup = A40000010000000000000001;
 			packageReferences = (
-				A80000010000000000000001 /* XCLocalSwiftPackageReference "" */,
+				A80000010000000000000001 /* XCLocalSwiftPackageReference "." */,
 			);
 			productRefGroup = A40000010000000000000003 /* Products */;
 			projectDirPath = "";
@@ -192,8 +185,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A10000010000000000000003 /* Localizable.strings in Resources */,
-				A10000010000000000000004 /* Localizable.strings in Resources */,
+				A10000010000000000000003 /* zh-Hans in Resources */,
+				A10000010000000000000004 /* en in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -219,14 +212,43 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		B40000010000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A50000010000000000000001 /* SleepMate */;
+			targetProxy = B80000010000000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		164714963049789D0080B43C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				DEVELOPMENT_TEAM = CBDC2P58X3;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				PRODUCT_NAME = SleepMate;
+			};
+			name = Debug;
+		};
+		164714973049789D0080B43C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = CBDC2P58X3;
+				PRODUCT_NAME = SleepMate;
+			};
+			name = Release;
+		};
 		A90000010000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEVELOPMENT_TEAM = CBDC2P58X3;
+				CODE_SIGN_STYLE = Automatic;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGNING_REQUIRED = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = SleepMate;
@@ -245,10 +267,10 @@
 		A90000010000000000000002 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEVELOPMENT_TEAM = CBDC2P58X3;
+				CODE_SIGN_STYLE = Automatic;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGNING_REQUIRED = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = SleepMate;
@@ -267,10 +289,10 @@
 		B90000010000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGNING_REQUIRED = NO;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CBDC2P58X3;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.sleepmate.app.uitests;
@@ -286,10 +308,10 @@
 		B90000010000000000000002 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGNING_REQUIRED = NO;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CBDC2P58X3;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.sleepmate.app.uitests;
@@ -317,8 +339,8 @@
 		A70000010000000000000002 /* Build configuration list for PBXNativeTarget "SleepMate" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				A90000010000000000000003 /* Debug */,
-				A90000010000000000000004 /* Release */,
+				164714963049789D0080B43C /* Debug */,
+				164714973049789D0080B43C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -335,7 +357,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		A80000010000000000000001 /* XCLocalSwiftPackageReference "" */ = {
+		A80000010000000000000001 /* XCLocalSwiftPackageReference "." */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = .;
 		};
@@ -344,7 +366,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		A60000010000000000000001 /* SleepMateCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A80000010000000000000001 /* XCLocalSwiftPackageReference "" */;
+			package = A80000010000000000000001 /* XCLocalSwiftPackageReference "." */;
 			productName = SleepMateCore;
 		};
 /* End XCSwiftPackageProductDependency section */
