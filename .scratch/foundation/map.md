@@ -9,7 +9,7 @@ The approved Foundation spec was decomposed into seven dependency-aware tracer t
 - Canonical product document is `PRD.md`; the previous project PRD is archived and is not normative.
 - Domain core is platform-independent Swift Package Manager code.
 - Time-based behavior is driven by an injected `SleepMateClock`; no real sleeps in tests.
-- iOS shell and audio integration remain outside the domain core and require simulator/build plus real-device checks.
+- iOS shell and audio integration remain outside the domain core; the shell has a buildable XCUITest launch assertion, while audio/system behavior still requires real-device checks.
 
 ## Tickets
 

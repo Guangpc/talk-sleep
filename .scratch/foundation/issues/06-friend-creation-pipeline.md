@@ -6,10 +6,10 @@ Blocked by: 04 (域类型与可注入常量)
 
 Status: resolved
 
-- [ ] swift test 覆盖 素材→可聊天 完整路径（F-003）
-- [ ] swift test 覆盖 低置信度时挂起等待用户确认（F-004）
-- [ ] swift test 覆盖 生成结果含声音配置/风格摘要/候选记忆
+- [x] swift test 覆盖 素材→可聊天 完整路径（F-003）
+- [x] swift test 覆盖 低置信度时挂起等待用户确认（F-004）
+- [x] swift test 覆盖 生成结果含声音配置/风格摘要/候选记忆
 
 ## Answer
 
-已实现素材分析协议、低置信度确认状态和 AI 好友生成路径，并通过 3 个流水线测试。
+已实现唯一 `MaterialAnalysisService` seam、可观察素材阶段、低置信度确认、候选记忆显式选择和 AI 好友生成路径，并通过 4 个流水线测试。

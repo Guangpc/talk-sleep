@@ -6,9 +6,9 @@ Blocked by: None (can start immediately)
 
 Status: resolved
 
-- [ ] swift build 通过
-- [ ] swift test 通过（含一个冒烟测试）
-- [ ] 本地命令（build/test）写入 AGENTS.md 供 agent 复用
+- [x] swift build 通过
+- [x] swift test 通过（含一个冒烟测试）
+- [x] 本地命令（build/test）写入 AGENTS.md 供 agent 复用
 
 ## Answer
 

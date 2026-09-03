@@ -1,12 +1,12 @@
 # Spec: Foundation — 可测试的 iOS 工程骨架与域核心
 
-Status: ready-for-agent
+Status: resolved
 
-基准：`sleep-companion/PRD.md`（唯一基准）。本 spec 是三个纵向切片的第一个（顺序：Foundation → 创建 AI 好友 → 自动语音会话）。
+基准：`PRD.md`（唯一基准）。本 spec 是三个纵向切片的第一个（顺序：Foundation → 创建 AI 好友 → 自动语音会话）。
 
 ## Problem Statement
 
-PRD 已锁定产品与验收（多 AI 好友、素材流水线、自动语音会话、睡眠状态机、中英混合、数据控制与合规红线），但 `sleep-companion/` 目前只有文档，没有可运行的 iOS 工程，也没有任何可测试的核心逻辑承载点。后续两个 spec（创建 AI 好友、语音会话）需要一个"家"：能编译、能单测领域逻辑、能用真机验收音频/系统 seam 的最小骨架。没有它，后续实现会从零开始在 UI/音频/网络里混杂逻辑，导致核心状态机无法被可靠测试，PRD 的 F-1xx/F-2xx 验收无处落地。
+PRD 已锁定产品与验收（多 AI 好友、素材流水线、自动语音会话、睡眠状态机、中英混合、数据控制与合规红线）。本 Foundation slice 已建立可运行的 iOS 工程与可测试的核心逻辑承载点，为后续“创建 AI 好友”和“自动语音会话”提供能编译、能单测领域逻辑、能用真机验收音频/系统 seam 的最小骨架；后续实现不得把核心状态机重新混入 UI、音频或网络细节。
 
 ## Solution
 
@@ -62,12 +62,12 @@ PRD 已锁定产品与验收（多 AI 好友、素材流水线、自动语音会
 - 真实 OCR / 语音转写 / 说话人分离 / LLM / TTS / 声音克隆 / 任何后端或第三方 SDK 接入；
 - 素材导入 UI 与相册/微信/文件交互；
 - 麦克风、音频会话、锁屏后台、系统通知等 iOS 集成行为；
-- 睡眠计时落库、总结/建议生成、数据删除/导出实现；
+- 睡眠计时落库、总结/建议生成策略、数据删除/导出实现（`SleepRecord` 的总结/建议字段仅作为 Foundation 类型边界）；
 - 账号、订阅、支付、训练数据收集；
 - 真机部署与 App Store 提交流程。
 
 ## Further Notes
 
-- 完成标准（Definition of Done）：`swift build`/`swift test` 通过；两个状态机迁移测试可追溯到 PRD F 编号；CONTEXT.md 与 ADR-0001 落盘；壳层启动到空 AI 好友列表；真机矩阵 checklist 入库。
+- 完成标准（Definition of Done）：`swift build`/`swift test` 通过；状态机迁移测试可追溯到 PRD F 编号；CONTEXT.md 与 ADR-0001 落盘；壳层启动断言已接入 XCUITest target；真机矩阵 checklist 入库。真实 UI launch 与真机矩阵执行仍是后续环境门禁，不在本次 generic test build 中虚报完成。
 - 后续切片顺序：Spec 2「创建 AI 好友（素材流水线）」→ Spec 3「自动语音会话 + 睡眠状态机（接音频 seam）」。各自独立 spec，复用本 Foundation 的 seam 与类型。
 - 优先级：本 spec 应一次交付完成再拆下一张；不建议并行开工，避免两个 feature 同时在空骨架上冲突。

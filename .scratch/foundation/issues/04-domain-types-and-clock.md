@@ -6,10 +6,10 @@ Blocked by: 02 (域核心 Swift Package 脚手架)
 
 Status: resolved
 
-- [ ] 新增类型编译通过
-- [ ] Clock 协议与常量表可注入
-- [ ] swift test 覆盖常量默认值
+- [x] 新增类型编译通过
+- [x] Clock 协议与常量表可注入
+- [x] swift test 覆盖常量默认值
 
 ## Answer
 
-已实现域类型、Clock 协议与产品时长常量，并通过 4 个域类型测试。
+已实现域类型、Clock 协议与产品时长常量，并通过 6 个域类型测试。
