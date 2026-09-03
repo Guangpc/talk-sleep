@@ -13,6 +13,9 @@
 		A10000010000000000000004 /* en in Resources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000004 /* en */; };
 		A10000010000000000000005 /* SleepMateCore in Frameworks */ = {isa = PBXBuildFile; productRef = A60000010000000000000001 /* SleepMateCore */; };
 		B10000010000000000000001 /* SleepMateAppLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000001 /* SleepMateAppLaunchTests.swift */; };
+		C10000010000000000000001 /* VoiceSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000010000000000000001 /* VoiceSessionView.swift */; };
+		C10000010000000000000002 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C20000010000000000000002 /* InfoPlist.strings */; };
+		C10000010000000000000003 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C20000010000000000000003 /* InfoPlist.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -33,6 +36,9 @@
 		A20000010000000000000004 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		A20000010000000000000005 /* SleepMate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SleepMate.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B20000010000000000000001 /* SleepMateAppLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepMateAppLaunchTests.swift; sourceTree = "<group>"; };
+		C20000010000000000000001 /* VoiceSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSessionView.swift; sourceTree = "<group>"; };
+		C20000010000000000000002 /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		C20000010000000000000003 /* InfoPlist.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = zh-Hans.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -68,6 +74,7 @@
 			children = (
 				A20000010000000000000001 /* SleepMateApp.swift */,
 				A20000010000000000000002 /* FriendListView.swift */,
+				C20000010000000000000001 /* VoiceSessionView.swift */,
 				A40000010000000000000005 /* Resources */,
 			);
 			path = App;
@@ -95,6 +102,8 @@
 			children = (
 				A20000010000000000000003 /* zh-Hans */,
 				A20000010000000000000004 /* en */,
+				C20000010000000000000002 /* InfoPlist.strings */,
+				C20000010000000000000003 /* InfoPlist.strings */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -187,6 +196,8 @@
 			files = (
 				A10000010000000000000003 /* zh-Hans in Resources */,
 				A10000010000000000000004 /* en in Resources */,
+				C10000010000000000000002 /* InfoPlist.strings in Resources */,
+				C10000010000000000000003 /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -199,6 +210,7 @@
 			files = (
 				A10000010000000000000001 /* SleepMateApp.swift in Sources */,
 				A10000010000000000000002 /* FriendListView.swift in Sources */,
+				C10000010000000000000001 /* VoiceSessionView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

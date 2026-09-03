@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "SleepMate uses the microphone for automatic bedtime voice conversation.";
+"NSSpeechRecognitionUsageDescription" = "SleepMate uses speech recognition to show your live transcription.";

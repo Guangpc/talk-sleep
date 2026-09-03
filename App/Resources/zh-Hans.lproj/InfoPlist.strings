@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "SleepMate 使用麦克风进行睡前自动语音陪聊。";
+"NSSpeechRecognitionUsageDescription" = "SleepMate 使用语音识别显示实时语音转写。";

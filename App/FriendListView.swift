@@ -2,6 +2,8 @@ import SwiftUI
 import SleepMateCore
 
 struct FriendListView: View {
+    @StateObject private var voiceSession = VoiceSessionViewModel()
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
@@ -18,6 +20,13 @@ struct FriendListView: View {
 
                 Text(String(localized: "ai_friend.empty"))
                     .foregroundStyle(.secondary)
+
+                NavigationLink {
+                    VoiceSessionView(session: voiceSession)
+                } label: {
+                    Label(String(localized: "voice_session.open"), systemImage: "waveform")
+                }
+                .buttonStyle(.borderedProminent)
 
                 Text("SleepMateCore \(SleepMateCore.version)")
                     .font(.caption)
