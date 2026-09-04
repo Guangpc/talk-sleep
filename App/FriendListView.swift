@@ -60,13 +60,25 @@ struct FriendListView: View {
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle("文字与文件")
         }
-        .simultaneousGesture(TapGesture().onEnded { focusedInput = nil })
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button(String(localized: "keyboard.done")) { focusedInput = nil }
             }
         }
+    }
+
+    private func focusBinding(for field: FriendInputField) -> Binding<Bool> {
+        Binding(
+            get: { focusedInput == field },
+            set: { isFocused in
+                if isFocused {
+                    focusedInput = field
+                } else if focusedInput == field {
+                    focusedInput = nil
+                }
+            }
+        )
     }
 
     private var workspaceHeader: some View {
@@ -89,8 +101,11 @@ struct FriendListView: View {
                 .textFieldStyle(.roundedBorder)
                 .accessibilityIdentifier("friend-name-input")
                 .onChange(of: friendName) { _, _ in analysisDraft = "" }
-            TextEditor(text: $analysisDraft)
-                .focused($focusedInput, equals: .analysis)
+            SystemEditMenuTextEditor(
+                text: $analysisDraft,
+                isFocused: focusBinding(for: .analysis),
+                accessibilityIdentifier: "friend-analysis-input"
+            )
                 .frame(minHeight: 190)
                 .padding(8)
                 .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
@@ -102,7 +117,6 @@ struct FriendListView: View {
                             .allowsHitTesting(false)
                     }
                 }
-                .accessibilityIdentifier("friend-analysis-input")
             if !analysisDraft.isEmpty {
                 Text(String(localized: "ai_friend.analysis_confirmation"))
                     .font(.caption)
@@ -118,8 +132,11 @@ struct FriendListView: View {
         VStack(alignment: .leading, spacing: 10) {
             Label("聊天记录与文字资料", systemImage: "text.bubble")
                 .font(.headline)
-            TextEditor(text: $friendContext)
-                .focused($focusedInput, equals: .context)
+            SystemEditMenuTextEditor(
+                text: $friendContext,
+                isFocused: focusBinding(for: .context),
+                accessibilityIdentifier: "friend-context-input"
+            )
                 .frame(minHeight: 210)
                 .padding(8)
                 .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
@@ -131,7 +148,6 @@ struct FriendListView: View {
                             .allowsHitTesting(false)
                     }
                 }
-                .accessibilityIdentifier("friend-context-input")
             HStack {
                 Button { setupError = ""; isImportingText = true } label: {
                     Label(String(localized: "ai_friend.import_text_file"), systemImage: "doc.text")

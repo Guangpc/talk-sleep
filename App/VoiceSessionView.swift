@@ -557,7 +557,7 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         guard let stored = persistedFriends.first,
               let configuration = currentGatewayConfiguration(voiceIDOverride: stored.voiceReference) else { return }
         replyPipeline = configuration.makeReplyPipeline()
-        voiceConfiguration = VoiceConfiguration(reference: stored.voiceReference)
+        voiceConfiguration = normalizedVoice(stored.voiceReference)
         model = configuration.model
         reasoningEffort = configuration.reasoningEffort
         friendID = stored.id

@@ -29,6 +29,12 @@
 - iOS 工程：generic `build-for-testing` 成功并编译新增 UI test。2026-09-04 用户真机反馈揭示“选择语音”被上传授权 gate 提前拦截、VAD `speechEnded` 未结束 ASR input；代码已改为允许先选本地文件、上传前再授权，并在尾部静音调用 `endAudio()`、等待 final transcript 后暂停麦克风进入 processing。按用户要求，本轮未重跑真机；新增 picker test、真实 clone、连续对话、静默结束回复、锁屏/中断和 provider-side 声音生命周期仍是发布门。
 
 
+## 当前文本编辑菜单自动验证（2026-09-05）
+
+- “聊天记录与文字资料”和“朋友性格 / 好友画像”统一使用可编辑、可选择的原生 `UITextView` adapter，系统 Copy/Cut/Paste/Select All 菜单不再与页面级清焦点手势竞争。
+- 结构回归检查通过；generic iOS Simulator `build-for-testing` 成功。
+- 按用户要求未做真机测试；当前环境也没有可用 simulator runtime，因此长按菜单仍需后续设备或 simulator runtime 做手势级验收。
+
 ## 当前音色与录音自动验证（2026-09-05）
 
 - 按用户要求，本轮不执行真机验收；之前安装/启动记录不作为本功能验收结论。

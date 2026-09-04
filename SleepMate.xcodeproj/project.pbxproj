@@ -10,6 +10,7 @@
 		A10000010000000000000001 /* SleepMateApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000001 /* SleepMateApp.swift */; };
 		A10000010000000000000002 /* FriendListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000002 /* FriendListView.swift */; };
 		A10000010000000000000006 /* GatewaySettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000006 /* GatewaySettings.swift */; };
+		A10000010000000000000007 /* SystemEditMenuTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000007 /* SystemEditMenuTextEditor.swift */; };
 		A10000010000000000000003 /* zh-Hans in Resources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000003 /* zh-Hans */; };
 		A10000010000000000000004 /* en in Resources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000004 /* en */; };
 		A10000010000000000000005 /* SleepMateCore in Frameworks */ = {isa = PBXBuildFile; productRef = A60000010000000000000001 /* SleepMateCore */; };
@@ -34,6 +35,7 @@
 		A20000010000000000000001 /* SleepMateApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepMateApp.swift; sourceTree = "<group>"; };
 		A20000010000000000000002 /* FriendListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendListView.swift; sourceTree = "<group>"; };
 		A20000010000000000000006 /* GatewaySettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewaySettings.swift; sourceTree = "<group>"; };
+		A20000010000000000000007 /* SystemEditMenuTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemEditMenuTextEditor.swift; sourceTree = "<group>"; };
 		A20000010000000000000003 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		A20000010000000000000004 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		A20000010000000000000005 /* SleepMate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SleepMate.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -77,6 +79,7 @@
 				A20000010000000000000001 /* SleepMateApp.swift */,
 				A20000010000000000000002 /* FriendListView.swift */,
 				A20000010000000000000006 /* GatewaySettings.swift */,
+				A20000010000000000000007 /* SystemEditMenuTextEditor.swift */,
 				C20000010000000000000001 /* VoiceSessionView.swift */,
 				A40000010000000000000005 /* Resources */,
 			);
@@ -214,6 +217,7 @@
 				A10000010000000000000001 /* SleepMateApp.swift in Sources */,
 				A10000010000000000000002 /* FriendListView.swift in Sources */,
 				A10000010000000000000006 /* GatewaySettings.swift in Sources */,
+				A10000010000000000000007 /* SystemEditMenuTextEditor.swift in Sources */,
 				C10000010000000000000001 /* VoiceSessionView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
