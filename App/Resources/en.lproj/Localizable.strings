@@ -6,6 +6,12 @@
 "ai_friend.context_hint" = "Add messages, notes, or a short description to guide the AI friend.";
 "ai_friend.context_placeholder" = "For example: We talk gently about music and the sea before sleep.";
 "ai_friend.import_text_file" = "Import a text file";
+"ai_friend.analyze" = "Summarize chat style and memories";
+"ai_friend.analyzing" = "Summarizing style, habits, and important places…";
+"ai_friend.analysis_result" = "Editable friend profile";
+"ai_friend.analysis_confirmation" = "Review and edit these candidates. Creating the AI friend confirms using these styles, places, habits, and memories in conversation.";
+"ai_friend.analysis_ready" = "Friend profile generated — review it before creating";
+"ai_friend.analysis_error" = "The friend profile result could not be read. Check the gateway and try again.";
 "ai_friend.voice_section" = "Friend voice (optional)";
 "ai_friend.voice_hint" = "Use only audio you are authorized to process. MP3, M4A, or WAV; 10 seconds–5 minutes; at most 20 MB.";
 "ai_friend.choose_audio" = "Choose voice audio";
@@ -14,7 +20,7 @@
 "ai_friend.text_read_error" = "This text file could not be read as UTF-8.";
 "ai_friend.consent_toggle" = "I have authorization to use this voice";
 "ai_friend.consent_message" = "The selected audio will be processed by the configured gateway for voice cloning. Review intended use, cloud processing, retention, and deletion before confirming. You can cancel before upload.";
-"ai_friend.consent_required" = "Confirm voice authorization before creating this friend.";
+"ai_friend.consent_required" = "Confirm voice authorization before uploading audio and creating the voice.";
 "ai_friend.source_required" = "Add friend context or choose a voice audio file first.";
 "ai_friend.create" = "Create AI friend";
 "ai_friend.creating" = "Creating AI friend…";
@@ -36,10 +42,12 @@
 "voice_session.retry" = "Retry permissions";
 "voice_session.state.starting" = "Preparing automatic listening";
 "voice_session.state.listening" = "Listening";
+"voice_session.state.processing" = "Listening stopped while the AI friend thinks";
 "voice_session.state.speaking" = "AI friend is speaking";
 "voice_session.state.paused" = "Listening paused";
 "voice_session.state.ended" = "Session ended";
 "voice_session.microphone.active" = "Microphone active";
+"voice_session.microphone.processing" = "Microphone paused while generating a reply";
 "voice_session.microphone.paused" = "Microphone paused";
 "voice_session.microphone.inactive" = "Microphone inactive";
 "voice_session.network.local" = "AI gateway not configured · inject a session token";

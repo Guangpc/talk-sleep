@@ -20,7 +20,8 @@ SleepMateCore（平台无关 Swift Package）
   ├─ FriendCreationPipeline
   ├─ SleepSessionStateMachine
   ├─ VoiceSessionCoordinator：状态 → effects
-  └─ VoiceActivityDetector：RMS 帧 → speech onset
+  ├─ FriendContextAnalysisPipeline：聊天记录 → 可编辑好友画像
+  └─ VoiceActivityDetector：RMS 帧 → speech onset/end
 ```
 
 `SleepMateCore` 的域模块不依赖 AVFoundation、Speech、UIKit 或持久化框架；其中的 gateway edge 仅使用 Foundation URLSession，访问 app-facing gateway，不接触 provider keys。Core 仍只经可观察的状态、事件、effects 和 adapter interface 表达业务；App 执行设备 I/O。
@@ -32,12 +33,13 @@ SleepMateCore（平台无关 Swift Package）
   → AVAudioEngine input tap
       ├─ RMS → VoiceActivityDetector → speech gate
       │                              ├─ 有效帧 → Apple Speech → 实时转写 → SwiftUI
-      │                              └─ userSpeechStarted（朗读中打断）
+      │                              ├─ userSpeechStarted（朗读中打断）
+      │                              └─ speechEnded → endAudio → final transcript
                                            ↓
                                   VoiceSessionCoordinator
-                                    ├─ stopPlayback
-                                    ├─ listeningPaused/Resumed
-                                    └─ startPlayback(text)
+                                    ├─ listening → processing（暂停麦克风）
+                                    ├─ stopPlayback / listeningResumed
+                                    └─ processing → startPlayback(text)
                                            ↓
                                   VoiceReplyPipeline
                                     ├─ OpenAINextGatewayClient（SSE）
@@ -46,7 +48,7 @@ SleepMateCore（平台无关 Swift Package）
                                   AVAudioPlayer
 ```
 
-`AVAudioSession` 使用 `.playAndRecord` + `.voiceChat` 并默认扬声器输出；输入节点启用 voice processing 以降低系统朗读回灌。`VoiceActivityDetector` 先估计环境底噪，再使用相对阈值和连续两帧确认 onset；只在 speech gate 打开后把有效帧送往 Speech，并保留短尾音，静音/校准/结束帧直接丢弃。这样替代容易迫使用户提高音量的固定阈值。检测逻辑是 Core 纯模块，真实音频帧和 AEC 属于 iOS adapter。
+`AVAudioSession` 使用 `.playAndRecord` + `.voiceChat` 并默认扬声器输出；输入节点启用 voice processing 以降低系统朗读回灌。`VoiceActivityDetector` 先估计环境底噪，再使用相对阈值和连续两帧确认 onset；只在 speech gate 打开后把有效帧送往 Speech，并保留短尾音，静音/校准/结束帧直接丢弃。这样替代容易迫使用户提高音量的固定阈值。检测逻辑是 Core 纯模块，真实音频帧和 AEC 属于 iOS adapter。尾部静音触发 `endAudio()`，优先等待 Apple Speech final transcript；若 1.5 秒内没有 terminal callback，则以 generation-safe fallback 提交最后一个非空 partial 或恢复监听。取得文本后才发出 `responseRequested`；LLM/TTS 失败通过 `responseFailed` 恢复监听，避免麦克风无限保持在 listening。
 
 当前转写使用 Apple Speech；App 不保存原始音频，但识别可能依赖 Apple 网络服务。已配置 gateway 时，`VoiceReplyPipeline` 将同一轮转写和 history 发送到 server-side LLM，再将完整 AI 回复发送到 MiniMax gateway 并由 `AVAudioPlayer` 播放；gateway 未配置时只显示错误，不生成本地 fake 回复。
 
@@ -54,7 +56,7 @@ SleepMateCore（平台无关 Swift Package）
 
 ### AI 好友与素材
 
-`AIFriendProfile` 包含用户自定义名称、头像引用、声音配置、可编辑风格摘要、已确认记忆、话题偏好和禁提主题。`FriendCreationPipeline` 接收 `MaterialAnalysisService`，把导入、OCR/转写、说话人区分、分析、确认和 profile 构建表达为可观察阶段。真实素材 OCR/ASR、说话人分析尚未实现；当前最小闭环另外提供 consent-gated 音频 clone → voice ID → TTS 路径。
+`AIFriendProfile` 包含用户自定义名称、头像引用、声音配置、可编辑风格摘要、已确认记忆、话题偏好和禁提主题。`FriendCreationPipeline` 接收 `MaterialAnalysisService`，把完整素材流水线表达为可观察阶段。当前文字路径由 `FriendContextAnalysisPipeline` 使用 app-facing LLM 的 profiling `xhigh`，针对指定好友提取内容摘要、风格、口头禅、习惯、重要地点、重要经历和偏好话题，并把结果作为可编辑候选资料；创建好友后该资料成为会话 system context。真实截图 OCR、素材音频 ASR 和可靠说话人区分仍未实现；音频路径继续使用 consent-gated clone → voice ID → TTS。
 
 ### 睡眠会话
 
@@ -71,7 +73,7 @@ chatting
 
 ### 语音会话
 
-`VoiceSessionCoordinator` 的公共 interface 是 `handle(event) -> [effect]`，状态包括 idle、listening、speaking、paused、ended。语音页进入后请求权限并自动开始 listening；TTS 中的 `userSpeechStarted` 或 pause 会先发出 `stopPlayback`；播放完成回到 listening 并发布 `listeningResumed`；结束后不再响应 resume。
+`VoiceSessionCoordinator` 的公共 interface 是 `handle(event) -> [effect]`，状态包括 idle、listening、processing、speaking、paused、ended。语音页进入后请求权限并自动开始 listening；TTS 中的 `userSpeechStarted` 或 pause 会先发出 `stopPlayback`；播放完成回到 listening 并发布 `listeningResumed`；结束后不再响应 resume。
 
 ## 测试 seams
 
@@ -81,4 +83,4 @@ chatting
 
 ## 明确边界
 
-当前仍不包含本地会话记录/terminal persistence、好友声音授权证明与 provider-side clone 删除传播、preview-confirm、TTS 缓存、完整后台音频、系统中断恢复、素材分析、云端数据、睡眠总结和 App Store 合规材料。后续实现必须保持 Core 纯逻辑 seam 与 iOS adapter seam；gateway 未配置或 provider 失败时不得把本地 tracer 文案描述为真实 AI 回复。
+当前仍不包含本地会话记录/terminal persistence、好友声音授权证明与 provider-side clone 删除传播、preview-confirm、TTS 缓存、完整后台音频、系统中断恢复、图片/音频素材分析、profile 持久化、云端数据、睡眠总结和 App Store 合规材料。后续实现必须保持 Core 纯逻辑 seam 与 iOS adapter seam；gateway 未配置或 provider 失败时不得把本地 tracer 文案描述为真实 AI 回复。

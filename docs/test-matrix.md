@@ -25,8 +25,8 @@
 ## 当前导入闭环自动验证（2026-09-04）
 
 - `server`：`npm test` 49/49；包含真实 `createServerFromEnv` 的 MiniMax upload→clone composition test；另有一次真实本地 gateway smoke，OpenAI SSE 与 MiniMax TTS 均 HTTP 200，未输出 provider key。
-- `SleepMateCore`：`swift test` 49/49；覆盖 LLM SSE client、MiniMax gateway TTS、授权 source validator、upload→clone client、LLM→TTS reply pipeline、空/不完整回复防 fake success。
-- iOS 工程：签名 device build、安装、启动成功；真机 XCUITest `SleepMateAppLaunchTests` 首次因 Form 下方控件未滚动失败，加入滚动后于 2026-09-04 11:35 通过（1/1）。App 已用局域网 gateway 地址启动并显示可配置路径；实际文件 picker/clone、真实 AI 连续对话、锁屏/中断和 provider-side 声音生命周期仍是发布门。
+- `SleepMateCore`：`swift test` 53/53；新增覆盖聊天内容/风格/习惯/重要地点/记忆结构化提取、目标好友限定、空/不完整分析拒绝，以及 listening→processing→speaking / responseFailed→listening。
+- iOS 工程：generic `build-for-testing` 成功并编译新增 UI test。2026-09-04 用户真机反馈揭示“选择语音”被上传授权 gate 提前拦截、VAD `speechEnded` 未结束 ASR input；代码已改为允许先选本地文件、上传前再授权，并在尾部静音调用 `endAudio()`、等待 final transcript 后暂停麦克风进入 processing。按用户要求，本轮未重跑真机；新增 picker test、真实 clone、连续对话、静默结束回复、锁屏/中断和 provider-side 声音生命周期仍是发布门。
 
 
 ## 设备与系统矩阵

@@ -19,4 +19,6 @@
 - Remaining unchecked items require sentence-level TTS streaming, model/profile UI, persistent friend records/provenance, local records/context hardening, production cache/offline policy, and a connected-iPhone validation.
 
 - The current App setup now supports consent-gated MP3/M4A/WAV selection, bounded local validation, UTF-8 text entry/file import, server upload→clone, and in-memory voice/profile configuration before the voice session. Text-only setup intentionally uses a pre-bound stock/test voice; text does not pretend to create a custom voice ID.
-- The real friend-audio clone and connected-iPhone playback remain human verification gates for the next session.
+- Imported chat text can now be summarized through the app-facing LLM into an editable, named-friend profile containing content summary, style, catchphrases, habits, important locations, memories, and topics; only the reviewed draft becomes conversation context.
+- VAD trailing silence now ends Apple Speech input, waits for the final transcript, pauses the microphone during reply generation, and recovers listening after failure. Local audio selection no longer requires consent before the picker; consent remains mandatory before upload/clone.
+- The picker presentation fix, silence-triggered reply, real friend-audio clone, and connected-iPhone playback remain human verification gates for the next device session.

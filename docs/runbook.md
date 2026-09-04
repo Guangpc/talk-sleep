@@ -35,8 +35,11 @@ xcodebuild build-for-testing \
 - `400 invalid_request`：检查 model/reasoning、消息格式、音频扩展名、base64、大小和时长。
 - `502 provider_*`：只根据稳定 code 判断；查看 server 运行状态和 provider 控制台，不打印 provider body。
 - App 显示 gateway unavailable：检查 URL、App token、voice binding；未知 model/profile、live `xhigh` 和缺少 voice binding 都会拒绝启用。
+- 点击“选择朋友声音”没有 picker：选择本地文件不再要求预先勾选授权；确认运行的是包含 `friend-audio-import-button` 的新构建。授权仍在上传/clone 前强制校验。
+- 导入聊天记录后没有画像：点击“总结聊天风格与记忆”，检查 gateway 可达；该请求使用 profiling `xhigh`，结果成功后会显示可编辑摘要。
+- 停止说话仍一直监听：确认 VAD `speechEnded` 已触发 Apple Speech `endAudio()`；若 terminal callback 缺失，1.5 秒 fallback 应使用最后一个非空 partial。随后 UI 应进入 processing 且麦克风暂停；失败后应恢复 listening。本轮代码修复仍需真机复测。
 - 音频无法播放：确认 gateway 返回非空 MP3，并检查 `AVAudioSession` route；这项需要真机补验。
 
 ## 发布前仍需人工执行
 
-在连接的 iPhone 上补做：授权音频真实导入、clone 成功后的 TTS、重复 turn、普通音量打断、系统来电/耳机/锁屏/后台、超时重试、删除传播和无 provider key 的 bundle 检查。当前自动 build 不能替代这些门。
+在连接的 iPhone 上补做：无预授权点击后 document picker 呈现、聊天摘要预览、尾部静音触发回复、授权音频真实导入、clone 成功后的 TTS、重复 turn、普通音量打断、系统来电/耳机/锁屏/后台、超时重试、删除传播和无 provider key 的 bundle 检查。当前自动 build 不能替代这些门。

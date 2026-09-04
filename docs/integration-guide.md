@@ -38,12 +38,13 @@ live dialogue 支持 `gpt-5.6-sol` / `gpt-5.6-terra` 与 `medium` / `high`。`xh
 ## 3. iOS 导入顺序
 
 1. 输入好友名称。
-2. 在文字框输入好友风格、聊天记录或说明，或导入 UTF-8 text file。
-3. 可选选择 `mp3`、`m4a` 或 `wav`；App 本地读取并测量时长。
-4. 仅当音频为 10 秒至 5 分钟且不超过 20 MiB 时才通过本地校验。
-5. 阅读预期用途、云端处理、保存/删除说明，并明确确认有权使用该声音。
-6. 点击创建：App 先上传 `voice_clone` 文件，再调用 clone route，成功后才绑定返回的 voice ID。
-7. 点击开始 AI 对话：Apple Speech ASR → OpenAI SSE → MiniMax TTS → AVAudioPlayer。
+2. 在文字框输入聊天记录/说明，或导入 UTF-8 text file。
+3. 点击“总结聊天风格与记忆”；profiling `xhigh` 针对指定好友提取内容摘要、风格、口头禅、习惯、重要地点、重要经历和偏好话题。
+4. 检查并编辑候选好友画像；点击创建即确认把编辑后的内容作为对话 context。原始文字或目标好友名称改变时旧分析自动清除，需重新总结。
+5. 可选选择 `mp3`、`m4a` 或 `wav`；选择只在本地读取和测量，不要求事先授权，也不会上传。
+6. 仅当音频为 10 秒至 5 分钟且不超过 20 MiB 时才通过本地校验。上传前必须阅读说明并明确确认有权使用该声音。
+7. 点击创建：有音频时 App 先上传 `voice_clone` 文件，再调用 clone route；成功后才绑定返回的 voice ID。
+8. 点击开始 AI 对话：Apple Speech ASR 在尾部静音后结束当前 input → OpenAI SSE → MiniMax TTS → AVAudioPlayer。
 
 没有 audio 时，文字资料只作为 context/style 素材，并使用预配置的 stock/test gateway voice ID；文字本身不会也不能假装生成 custom voice ID。没有任何文字或 voice binding 时，创建会被拒绝。
 
@@ -114,4 +115,4 @@ gateway 只接受 `voice_clone` / `prompt_audio`，校验扩展名、base64、�
 
 ## 6. 现在不宣称的能力
 
-当前没有完成声音来源的真实授权证明、provider-side 删除传播、好友 profile 持久化、离线重试策略、句子级流式 TTS、锁屏/后台音频和真机完整回归。真机验证步骤留给设备可用时执行；自动测试结果见 [`test-matrix.md`](test-matrix.md)。
+当前没有完成声音来源的真实授权证明、provider-side 删除传播、好友 profile/确认记忆持久化、离线重试策略、句子级流式 TTS、锁屏/后台音频和本轮 picker/静默结束修复的真机回归。真机验证步骤留给设备可用时执行；自动测试结果见 [`test-matrix.md`](test-matrix.md)。

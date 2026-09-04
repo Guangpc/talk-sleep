@@ -6,6 +6,12 @@
 "ai_friend.context_hint" = "可以输入聊天记录、笔记或简短描述，帮助 AI 好友保持相应风格。";
 "ai_friend.context_placeholder" = "例如：睡前我们会温柔地聊音乐和海边。";
 "ai_friend.import_text_file" = "导入文字文件";
+"ai_friend.analyze" = "总结聊天风格与记忆";
+"ai_friend.analyzing" = "正在总结聊天风格、习惯和重要地点…";
+"ai_friend.analysis_result" = "可编辑的好友画像";
+"ai_friend.analysis_confirmation" = "请检查并编辑以上候选内容。创建 AI 好友即确认将这些风格、地点、习惯和经历用于对话。";
+"ai_friend.analysis_ready" = "好友画像已生成，请检查后再创建";
+"ai_friend.analysis_error" = "无法读取好友画像结果，请检查 gateway 后重试。";
 "ai_friend.voice_section" = "朋友声音（可选）";
 "ai_friend.voice_hint" = "只使用你有权处理的音频。支持 MP3、M4A、WAV；10 秒至 5 分钟；不超过 20 MB。";
 "ai_friend.choose_audio" = "选择朋友声音";
@@ -14,7 +20,7 @@
 "ai_friend.text_read_error" = "无法按 UTF-8 读取这个文字文件。";
 "ai_friend.consent_toggle" = "我确认已经获得使用此声音的授权";
 "ai_friend.consent_message" = "所选音频将由配置的 gateway 处理，用于声音克隆。确认前请阅读预期用途、云端处理、保存和删除说明；上传前可以取消。";
-"ai_friend.consent_required" = "创建好友前请确认声音授权。";
+"ai_friend.consent_required" = "上传音频并创建声音前，请确认已经获得授权。";
 "ai_friend.source_required" = "请先添加好友资料或选择声音文件。";
 "ai_friend.create" = "创建 AI 好友";
 "ai_friend.creating" = "正在创建 AI 好友…";
@@ -36,10 +42,12 @@
 "voice_session.retry" = "重新请求权限";
 "voice_session.state.starting" = "正在准备自动聆听";
 "voice_session.state.listening" = "正在聆听";
+"voice_session.state.processing" = "已停止聆听，AI 好友正在思考";
 "voice_session.state.speaking" = "AI 好友正在说话";
 "voice_session.state.paused" = "已暂停聆听";
 "voice_session.state.ended" = "会话已结束";
 "voice_session.microphone.active" = "麦克风已开启";
+"voice_session.microphone.processing" = "麦克风已暂停，正在生成回复";
 "voice_session.microphone.paused" = "麦克风已暂停";
 "voice_session.microphone.inactive" = "麦克风未开启";
 "voice_session.network.local" = "AI gateway 未配置 · 请注入会话 token";

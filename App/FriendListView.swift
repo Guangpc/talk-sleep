@@ -7,16 +7,22 @@ struct FriendListView: View {
     @StateObject private var voiceSession = VoiceSessionViewModel()
     @State private var friendName = ""
     @State private var friendContext = ""
+    @State private var analysisDraft = ""
     @State private var selectedAudio: PendingAudio?
     @State private var consentConfirmed = false
     @State private var isImportingAudio = false
     @State private var isImportingText = false
+    @State private var isAnalyzing = false
     @State private var isWorking = false
     @State private var setupStatus = ""
     @State private var setupError = ""
 
     private let validator = AuthorizedVoiceSourceValidator()
-    private let supportedAudioTypes = ["mp3", "m4a", "wav"].compactMap { UTType(filenameExtension: $0, conformingTo: .audio) }
+    private let supportedAudioTypes = ["mp3", "m4a", "wav"].compactMap {
+        UTType(filenameExtension: $0, conformingTo: .audio)
+    }
+
+    private var isBusy: Bool { isAnalyzing || isWorking }
 
     var body: some View {
         NavigationStack {
@@ -31,6 +37,9 @@ struct FriendListView: View {
 
                 Section(String(localized: "ai_friend.profile_section")) {
                     TextField(String(localized: "ai_friend.name"), text: $friendName)
+                        .onChange(of: friendName) { _, _ in
+                            analysisDraft = ""
+                        }
                     Text(String(localized: "ai_friend.context_hint"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -45,10 +54,45 @@ struct FriendListView: View {
                                     .allowsHitTesting(false)
                             }
                         }
+                        .onChange(of: friendContext) { _, _ in
+                            analysisDraft = ""
+                        }
+
                     Button {
+                        setupError = ""
                         isImportingText = true
                     } label: {
                         Label(String(localized: "ai_friend.import_text_file"), systemImage: "doc.text")
+                    }
+                    .fileImporter(
+                        isPresented: $isImportingText,
+                        allowedContentTypes: [.plainText, .utf8PlainText],
+                        allowsMultipleSelection: false,
+                        onCompletion: importText
+                    )
+
+                    Button {
+                        analyzeFriendContext()
+                    } label: {
+                        if isAnalyzing {
+                            HStack {
+                                ProgressView()
+                                Text(String(localized: "ai_friend.analyzing"))
+                            }
+                        } else {
+                            Label(String(localized: "ai_friend.analyze"), systemImage: "sparkles")
+                        }
+                    }
+                    .disabled(friendContext.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isBusy)
+
+                    if !analysisDraft.isEmpty {
+                        Text(String(localized: "ai_friend.analysis_result"))
+                            .font(.subheadline.weight(.semibold))
+                        TextEditor(text: $analysisDraft)
+                            .frame(minHeight: 180)
+                        Text(String(localized: "ai_friend.analysis_confirmation"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
@@ -57,14 +101,19 @@ struct FriendListView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Button {
-                        guard consentConfirmed else {
-                            setupError = String(localized: "ai_friend.consent_required")
-                            return
-                        }
+                        setupError = ""
                         isImportingAudio = true
                     } label: {
                         Label(String(localized: "ai_friend.choose_audio"), systemImage: "waveform")
                     }
+                    .accessibilityIdentifier("friend-audio-import-button")
+                    .fileImporter(
+                        isPresented: $isImportingAudio,
+                        allowedContentTypes: supportedAudioTypes,
+                        allowsMultipleSelection: false,
+                        onCompletion: importAudio
+                    )
+
                     if let selectedAudio {
                         Label(
                             String(format: String(localized: "ai_friend.audio_selected"), selectedAudio.filename, selectedAudio.durationSeconds),
@@ -88,7 +137,7 @@ struct FriendListView: View {
                             Label(String(localized: "ai_friend.create"), systemImage: "person.badge.plus")
                         }
                     }
-                    .disabled(isWorking)
+                    .disabled(isBusy)
 
                     if !setupStatus.isEmpty {
                         Label(setupStatus, systemImage: "arrow.triangle.2.circlepath")
@@ -113,58 +162,96 @@ struct FriendListView: View {
             }
             .navigationTitle(String(localized: "ai_friend.title"))
         }
-        .fileImporter(
-            isPresented: $isImportingAudio,
-            allowedContentTypes: supportedAudioTypes,
-            allowsMultipleSelection: false,
-            onCompletion: importAudio
-        )
-        .fileImporter(
-            isPresented: $isImportingText,
-            allowedContentTypes: [.plainText, .utf8PlainText],
-            allowsMultipleSelection: false,
-            onCompletion: importText
-        )
     }
 
     private func importAudio(_ result: Result<[URL], Error>) {
-        guard case let .success(urls) = result, let url = urls.first else { return }
-        Task { @MainActor in
-            let accessed = url.startAccessingSecurityScopedResource()
-            defer {
-                if accessed { url.stopAccessingSecurityScopedResource() }
-            }
-            do {
-                let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey])
-                if let fileSize = resourceValues.fileSize, fileSize > AuthorizedVoiceSourceValidator.maximumAudioBytes {
-                    throw AuthorizedVoiceSourceError.audioTooLarge
-                }
-                let data = try Data(contentsOf: url, options: [.mappedIfSafe])
-                let duration = try await AVURLAsset(url: url).load(.duration).seconds
-                selectedAudio = PendingAudio(data: data, filename: url.lastPathComponent, durationSeconds: duration)
-                setupError = ""
-            } catch let error as AuthorizedVoiceSourceError {
-                selectedAudio = nil
-                setupError = error.localizedDescription
-            } catch {
-                selectedAudio = nil
+        switch result {
+        case let .failure(error):
+            if (error as NSError).code != NSUserCancelledError {
                 setupError = String(localized: "ai_friend.audio_read_error")
+            }
+        case let .success(urls):
+            guard let url = urls.first else { return }
+            Task { @MainActor in
+                let accessed = url.startAccessingSecurityScopedResource()
+                defer {
+                    if accessed { url.stopAccessingSecurityScopedResource() }
+                }
+                do {
+                    let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey])
+                    if let fileSize = resourceValues.fileSize, fileSize > AuthorizedVoiceSourceValidator.maximumAudioBytes {
+                        throw AuthorizedVoiceSourceError.audioTooLarge
+                    }
+                    let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+                    let duration = try await AVURLAsset(url: url).load(.duration).seconds
+                    selectedAudio = PendingAudio(data: data, filename: url.lastPathComponent, durationSeconds: duration)
+                    setupError = ""
+                } catch let error as AuthorizedVoiceSourceError {
+                    selectedAudio = nil
+                    setupError = error.localizedDescription
+                } catch {
+                    selectedAudio = nil
+                    setupError = String(localized: "ai_friend.audio_read_error")
+                }
             }
         }
     }
 
     private func importText(_ result: Result<[URL], Error>) {
-        guard case let .success(urls) = result, let url = urls.first else { return }
-        Task { @MainActor in
-            let accessed = url.startAccessingSecurityScopedResource()
-            defer {
-                if accessed { url.stopAccessingSecurityScopedResource() }
-            }
-            do {
-                friendContext = try String(contentsOf: url, encoding: .utf8)
-                setupError = ""
-            } catch {
+        switch result {
+        case let .failure(error):
+            if (error as NSError).code != NSUserCancelledError {
                 setupError = String(localized: "ai_friend.text_read_error")
+            }
+        case let .success(urls):
+            guard let url = urls.first else { return }
+            Task { @MainActor in
+                let accessed = url.startAccessingSecurityScopedResource()
+                defer {
+                    if accessed { url.stopAccessingSecurityScopedResource() }
+                }
+                do {
+                    friendContext = try String(contentsOf: url, encoding: .utf8)
+                    setupError = ""
+                } catch {
+                    setupError = String(localized: "ai_friend.text_read_error")
+                }
+            }
+        }
+    }
+
+    private func analyzeFriendContext() {
+        setupError = ""
+        setupStatus = ""
+        let source: String
+        do {
+            source = try validator.validateFriendText(friendContext).text
+        } catch {
+            setupError = error.localizedDescription
+            return
+        }
+
+        let targetName = friendName.trimmingCharacters(in: .whitespacesAndNewlines)
+        isAnalyzing = true
+        setupStatus = String(localized: "ai_friend.analyzing")
+        Task { @MainActor in
+            defer { isAnalyzing = false }
+            do {
+                let analysis = try await voiceSession.analyzeFriendContext(source, friendName: targetName)
+                guard friendContext.trimmingCharacters(in: .whitespacesAndNewlines) == source,
+                      friendName.trimmingCharacters(in: .whitespacesAndNewlines) == targetName else {
+                    setupStatus = ""
+                    return
+                }
+                analysisDraft = analysis.conversationContext
+                setupStatus = String(localized: "ai_friend.analysis_ready")
+            } catch let error as FriendContextAnalysisError {
+                setupStatus = ""
+                if error == .cancelled { return }
+                setupError = String(localized: "ai_friend.analysis_error")
+            } catch {
+                setupStatus = ""
+                setupError = error.localizedDescription
             }
         }
     }
@@ -173,11 +260,14 @@ struct FriendListView: View {
         setupError = ""
         setupStatus = ""
         voiceSession.beginFriendSetup()
+        let contextInput = analysisDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? friendContext
+            : analysisDraft
         let context: String
         do {
-            context = try validator.validateFriendText(friendContext).text
+            context = try validator.validateFriendText(contextInput).text
         } catch let error as AuthorizedSourceTextError {
-            if friendContext.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if contextInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 context = ""
             } else {
                 setupError = error.localizedDescription
@@ -245,7 +335,6 @@ private struct PendingAudio {
     let filename: String
     let durationSeconds: TimeInterval
 }
-
 
 #Preview {
     FriendListView()

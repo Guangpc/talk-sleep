@@ -59,6 +59,17 @@ private struct SleepMateGatewayConfiguration {
         )
     }
 
+    func makeFriendContextAnalysisPipeline() -> FriendContextAnalysisPipeline {
+        let llmEndpoint = baseURL
+            .appendingPathComponent("v1")
+            .appendingPathComponent("llm")
+            .appendingPathComponent("chat")
+        return FriendContextAnalysisPipeline(
+            llm: OpenAINextGatewayClient(gatewayEndpoint: llmEndpoint, gatewayToken: token),
+            model: model
+        )
+    }
+
     func makeReplyPipeline() -> VoiceReplyPipeline {
         let llmEndpoint = baseURL
             .appendingPathComponent("v1")
@@ -94,10 +105,14 @@ private final class LiveSpeechAudioSession: NSObject, @unchecked Sendable, Audio
     private let recognizer: SFSpeechRecognizer?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
+    private var isTapInstalled = false
+    private var isFinishingUtterance = false
+    private var recognitionGeneration = 0
     private let analysisQueue = DispatchQueue(label: "com.sleepmate.voice-analysis")
     private var voiceActivityDetector = VoiceActivityDetector()
 
     var onSpeechStarted: (() -> Void)?
+    var onSpeechEnded: (() -> Void)?
     var onTranscript: ((String, Bool) -> Void)?
     var onPlaybackFinished: (() -> Void)?
     var onError: ((String) -> Void)?
@@ -163,13 +178,19 @@ private final class LiveSpeechAudioSession: NSObject, @unchecked Sendable, Audio
         analysisQueue.sync {
             voiceActivityDetector = VoiceActivityDetector()
         }
+        recognitionGeneration += 1
+        let generation = recognitionGeneration
+        isFinishingUtterance = false
 
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         recognitionRequest = request
 
         let inputNode = audioEngine.inputNode
-        inputNode.removeTap(onBus: 0)
+        if isTapInstalled {
+            inputNode.removeTap(onBus: 0)
+            isTapInstalled = false
+        }
         do {
             try inputNode.setVoiceProcessingEnabled(true)
         } catch {
@@ -191,23 +212,45 @@ private final class LiveSpeechAudioSession: NSObject, @unchecked Sendable, Audio
                 break
             }
 
-            if observation == .speechStarted {
+            switch observation {
+            case .speechStarted:
                 DispatchQueue.main.async { [weak self] in
                     self?.onSpeechStarted?()
                 }
+            case .speechEnded:
+                DispatchQueue.main.async { [weak self] in
+                    self?.finishCurrentUtterance()
+                }
+            default:
+                break
             }
         }
+        isTapInstalled = true
 
         recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
             if let result {
                 DispatchQueue.main.async { [weak self] in
-                    self?.onTranscript?(result.bestTranscription.formattedString, result.isFinal)
+                    guard let self, self.recognitionGeneration == generation else { return }
+                    let text = result.bestTranscription.formattedString
+                    self.onTranscript?(text, result.isFinal)
+                    if result.isFinal {
+                        self.isFinishingUtterance = false
+                        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            self.onSpeechEnded?()
+                        }
+                    }
                 }
             }
             if let error {
                 DispatchQueue.main.async { [weak self] in
-                    guard let self, self.audioEngine.isRunning else { return }
-                    self.onError?(error.localizedDescription)
+                    guard let self, self.recognitionGeneration == generation else { return }
+                    let wasFinishingUtterance = self.isFinishingUtterance
+                    self.isFinishingUtterance = false
+                    if wasFinishingUtterance {
+                        self.onSpeechEnded?()
+                    } else if self.audioEngine.isRunning {
+                        self.onError?(error.localizedDescription)
+                    }
                 }
             }
         }
@@ -218,6 +261,26 @@ private final class LiveSpeechAudioSession: NSObject, @unchecked Sendable, Audio
         } catch {
             stopListening(deactivateSession: true)
             throw error
+        }
+    }
+
+    private func finishCurrentUtterance() {
+        guard audioEngine.isRunning, !isFinishingUtterance else { return }
+        isFinishingUtterance = true
+        audioEngine.stop()
+        if isTapInstalled {
+            audioEngine.inputNode.removeTap(onBus: 0)
+            isTapInstalled = false
+        }
+        recognitionRequest?.endAudio()
+        let generation = recognitionGeneration
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(1.5))
+            guard let self,
+                  self.recognitionGeneration == generation,
+                  self.isFinishingUtterance else { return }
+            self.isFinishingUtterance = false
+            self.onSpeechEnded?()
         }
     }
 
@@ -243,7 +306,12 @@ private final class LiveSpeechAudioSession: NSObject, @unchecked Sendable, Audio
         if audioEngine.isRunning {
             audioEngine.stop()
         }
-        audioEngine.inputNode.removeTap(onBus: 0)
+        if isTapInstalled {
+            audioEngine.inputNode.removeTap(onBus: 0)
+            isTapInstalled = false
+        }
+        isFinishingUtterance = false
+        recognitionGeneration += 1
         recognitionTask?.cancel()
         recognitionTask = nil
         recognitionRequest = nil
@@ -332,7 +400,6 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
     @Published private(set) var friendName = "AI Friend"
     private var friendContext = ""
     @Published private(set) var friendReady = false
-    private var responseTimer: Timer?
     private var replyTask: Task<Void, Never>?
     private var pendingAudio: Data?
     private var pendingConversationAssistant: String?
@@ -362,7 +429,10 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         self.reasoningEffort = reasoningEffort
         super.init()
         audio.onSpeechStarted = { [weak self] in
-            Task { @MainActor in self?.handle(.userSpeechStarted) }
+            Task { @MainActor in self?.receiveSpeechStarted() }
+        }
+        audio.onSpeechEnded = { [weak self] in
+            Task { @MainActor in self?.receiveSpeechEnded() }
         }
         audio.onTranscript = { [weak self] text, isFinal in
             Task { @MainActor in self?.receiveTranscript(text, isFinal: isFinal) }
@@ -405,6 +475,13 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         return configureFriend(name: name, voice: configuration.voice, context: context)
     }
 
+    func analyzeFriendContext(_ sourceText: String, friendName: String) async throws -> FriendContextAnalysis {
+        guard let configuration = SleepMateGatewayConfiguration.current(voiceIDOverride: "analysis-only") else {
+            throw VoiceSessionConfigurationError.gatewayUnavailable
+        }
+        return try await configuration.makeFriendContextAnalysisPipeline().analyze(sourceText, friendName: friendName)
+    }
+
     func cloneVoice(source: AuthorizedVoiceSource) async throws -> VoiceConfiguration {
         guard let configuration = SleepMateGatewayConfiguration.current(voiceIDOverride: "pending-voice") else {
             throw VoiceSessionConfigurationError.gatewayUnavailable
@@ -418,14 +495,12 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
     }
 
     deinit {
-        responseTimer?.invalidate()
         replyTask?.cancel()
         audio.end()
     }
 
     func start() {
         errorMessage = ""
-        responseTimer?.invalidate()
         replyTask?.cancel()
         pendingAudio = nil
         pendingConversationAssistant = nil
@@ -452,7 +527,6 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
     }
 
     func pause() {
-        responseTimer?.invalidate()
         handle(.pause)
     }
 
@@ -461,7 +535,6 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
     }
 
     func end() {
-        responseTimer?.invalidate()
         handle(.end)
     }
 
@@ -469,6 +542,7 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         switch state {
         case .idle: return String(localized: "voice_session.state.starting")
         case .listening: return String(localized: "voice_session.state.listening")
+        case .processing: return String(localized: "voice_session.state.processing")
         case .speaking: return String(localized: "voice_session.state.speaking")
         case .paused: return String(localized: "voice_session.state.paused")
         case .ended: return String(localized: "voice_session.state.ended")
@@ -478,6 +552,7 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
     var microphoneStatusLabel: String {
         switch state {
         case .listening, .speaking: return String(localized: "voice_session.microphone.active")
+        case .processing: return String(localized: "voice_session.microphone.processing")
         case .paused: return String(localized: "voice_session.microphone.paused")
         case .idle, .ended: return String(localized: "voice_session.microphone.inactive")
         }
@@ -497,14 +572,32 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         "\(model.rawValue) · \(reasoningEffort.rawValue)"
     }
 
+    private func receiveSpeechStarted() {
+        if coordinator.state == .speaking {
+            handle(.userSpeechStarted)
+        }
+        guard coordinator.state == .listening else { return }
+        latestTranscript = ""
+        lastRespondedTranscript = ""
+    }
+
+    private func receiveSpeechEnded() {
+        guard coordinator.state == .listening else { return }
+        if latestTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            audio.resumeListening()
+        } else {
+            respondIfNeeded()
+        }
+    }
+
     private func receiveTranscript(_ text: String, isFinal: Bool) {
-        guard !text.isEmpty else { return }
-        transcript = text
-        latestTranscript = text
-        responseTimer?.invalidate()
-        let delay: TimeInterval = isFinal ? 0.2 : 1.2
-        responseTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.respondIfNeeded() }
+        guard coordinator.state == .listening else { return }
+        let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return }
+        transcript = cleaned
+        latestTranscript = cleaned
+        if isFinal {
+            respondIfNeeded()
         }
     }
 
@@ -518,6 +611,7 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         }
 
         lastRespondedTranscript = text
+        transition(.responseRequested)
         replyTask?.cancel()
         let history = conversation
         let voiceConfiguration = self.voiceConfiguration
@@ -542,13 +636,14 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
                     guard let self, self.latestTranscript.trimmingCharacters(in: .whitespacesAndNewlines) == text else { return }
                     if let pipelineError = error as? VoiceReplyPipelineError, pipelineError == .cancelled { return }
                     self.errorMessage = error.localizedDescription
+                    self.transition(.responseFailed)
                 }
             }
         }
     }
 
     private func completeReply(_ reply: VoiceReply, for userText: String) {
-        guard coordinator.state == .listening,
+        guard coordinator.state == .processing,
               latestTranscript.trimmingCharacters(in: .whitespacesAndNewlines) == userText,
               !reply.audio.isEmpty else { return }
         conversation.append(LLMMessage(role: .user, content: userText))
@@ -594,14 +689,18 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
             switch effect {
             case .listeningStarted:
                 state = .listening
+            case .listeningStoppedForResponse:
+                state = .processing
+                audio.pauseListening()
             case let .startPlayback(text):
                 response = text
                 responseWasInterrupted = false
                 state = .speaking
+                // Resume VAD during playback so user speech can still interrupt the AI voice.
+                audio.resumeListening()
                 guard let audioData = pendingAudio else {
                     errorMessage = String(localized: "voice_session.playback_error")
-                    _ = coordinator.handle(.playbackFinished)
-                    state = .listening
+                    apply(coordinator.handle(.playbackFinished))
                     return
                 }
                 pendingAudio = nil

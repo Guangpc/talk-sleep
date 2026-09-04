@@ -3,7 +3,9 @@ import Foundation
 public enum VoiceSessionEvent: Equatable, Sendable {
     case start
     case userSpeechStarted
+    case responseRequested
     case responseReady(String)
+    case responseFailed
     case playbackFinished
     case pause
     case resume
@@ -13,6 +15,7 @@ public enum VoiceSessionEvent: Equatable, Sendable {
 public enum VoiceSessionState: Equatable, Sendable {
     case idle
     case listening
+    case processing
     case speaking
     case paused
     case ended
@@ -20,6 +23,7 @@ public enum VoiceSessionState: Equatable, Sendable {
 
 public enum VoiceSessionEffect: Equatable, Sendable {
     case listeningStarted
+    case listeningStoppedForResponse
     case startPlayback(String)
     case stopPlayback
     case listeningResumed
@@ -44,16 +48,24 @@ public struct VoiceSessionCoordinator {
             guard state == .speaking else { return [] }
             state = .listening
             return [.stopPlayback, .listeningResumed]
-        case let .responseReady(text):
+        case .responseRequested:
             guard state == .listening else { return [] }
+            state = .processing
+            return [.listeningStoppedForResponse]
+        case let .responseReady(text):
+            guard state == .listening || state == .processing else { return [] }
             state = .speaking
             return [.startPlayback(text)]
+        case .responseFailed:
+            guard state == .processing else { return [] }
+            state = .listening
+            return [.listeningResumed]
         case .playbackFinished:
             guard state == .speaking else { return [] }
             state = .listening
             return [.listeningResumed]
         case .pause:
-            guard state == .listening || state == .speaking else { return [] }
+            guard state == .listening || state == .processing || state == .speaking else { return [] }
             let wasSpeaking = state == .speaking
             state = .paused
             return wasSpeaking ? [.stopPlayback, .listeningPaused] : [.listeningPaused]

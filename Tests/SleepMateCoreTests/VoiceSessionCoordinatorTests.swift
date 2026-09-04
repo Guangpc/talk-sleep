@@ -31,6 +31,22 @@ final class VoiceSessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(finishedCoordinator.state, .listening)
     }
 
+    func testUtteranceEndStopsListeningWhileReplyIsGeneratedAndRecoversOnFailure() {
+        var coordinator = VoiceSessionCoordinator()
+        _ = coordinator.handle(.start)
+
+        XCTAssertEqual(coordinator.handle(.responseRequested), [.listeningStoppedForResponse])
+        XCTAssertEqual(coordinator.state, .processing)
+        XCTAssertEqual(coordinator.handle(.responseReady("收到")), [.startPlayback("收到")])
+        XCTAssertEqual(coordinator.state, .speaking)
+
+        var failedCoordinator = VoiceSessionCoordinator()
+        _ = failedCoordinator.handle(.start)
+        _ = failedCoordinator.handle(.responseRequested)
+        XCTAssertEqual(failedCoordinator.handle(.responseFailed), [.listeningResumed])
+        XCTAssertEqual(failedCoordinator.state, .listening)
+    }
+
     func testPauseResumeAndEndExposeControllableSessionStates() {
         var coordinator = VoiceSessionCoordinator()
         _ = coordinator.handle(.start)
