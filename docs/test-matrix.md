@@ -29,6 +29,13 @@
 - iOS 工程：generic `build-for-testing` 成功并编译新增 UI test。2026-09-04 用户真机反馈揭示“选择语音”被上传授权 gate 提前拦截、VAD `speechEnded` 未结束 ASR input；代码已改为允许先选本地文件、上传前再授权，并在尾部静音调用 `endAudio()`、等待 final transcript 后暂停麦克风进入 processing。按用户要求，本轮未重跑真机；新增 picker test、真实 clone、连续对话、静默结束回复、锁屏/中断和 provider-side 声音生命周期仍是发布门。
 
 
+## 当前音色与录音自动验证（2026-09-05）
+
+- 按用户要求，本轮不执行真机验收；之前安装/启动记录不作为本功能验收结论。
+- `SleepMateCore`：65/65；覆盖内置音色目录、持久化 voice ID 恢复 speed/pitch、未知 clone 中性参数、按键录音状态与 TTS 请求透传。
+- `server`：50/50；覆盖官方带空格的 MiniMax Mandarin voice ID，以及 speed/pitch 校验和 provider 透传。
+- iOS：generic iOS Simulator `build-for-testing` 成功，显式 Info.plist lint 成功；当前环境没有可用 simulator runtime，因此未执行 XCUITest runtime。
+
 ## 设备与系统矩阵
 
 | 场景 | 通过标准 | 结果 |

@@ -36,6 +36,9 @@ xcodebuild build-for-testing \
 - `502 provider_*`：只根据稳定 code 判断；查看 server 运行状态和 provider 控制台，不打印 provider body。
 - App 显示 gateway unavailable：先确认 `curl --fail http://127.0.0.1:8787/health` 成功，再检查 Gateway 配置卡中的 URL 和 App token 是否与 `.env.local` 的 `SLEEPMATE_GATEWAY_TOKEN` 一致。文字-only 创建不要求自定义 voice ID。
 - 点击“选择朋友声音”没有 picker：选择本地文件不再要求预先勾选授权；确认运行的是包含 `friend-audio-import-button` 的新构建。授权仍在上传/clone 前强制校验。
+- 找不到内置音色：先在“朋友语音”页选择一个 AI 好友；随后会显示温柔女声、成熟御姐音等五个 preset。选择 preset 不上传音频、不要求 clone 授权，并可直接开始对话。
+- 录音按钮无响应：确认麦克风权限已允许；点击一次开始、再次点击停止。少于 10 秒、超过 5 分钟或超过 20 MiB 会在本地拒绝，音频只在用户确认授权并点击上传后离开设备。
+- 内置音色 TTS 返回 `invalid_request`：确认运行的是支持 MiniMax 官方 `Chinese (Mandarin)_...` voice ID（含中间空格）以及 `speed`/`pitch` 的新版 gateway。
 - 导入聊天记录后没有画像：点击“总结聊天风格与记忆”，检查 gateway 可达；该请求使用 profiling `xhigh`，结果成功后会显示可编辑摘要。
 - 停止说话仍一直监听：确认 VAD `speechEnded` 已触发 Apple Speech `endAudio()`；若 terminal callback 缺失，1.5 秒 fallback 应使用最后一个非空 partial。随后 UI 应进入 processing 且麦克风暂停；失败后应恢复 listening。本轮代码修复仍需真机复测。
 - 音频无法播放：确认 gateway 返回非空 MP3，并检查 `AVAudioSession` route；这项需要真机补验。

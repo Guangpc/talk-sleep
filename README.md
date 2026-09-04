@@ -93,6 +93,17 @@ SLEEPMATE_VOICE_ID=<可选；文字-only 好友使用 stock/test voice>
 
 `OPENAI_NEXT_API_KEY` 和 `MINIMAX_API_KEY` 只给 server 使用，绝不能填入 App 或 Xcode Scheme。App token 不是 provider key；两者必须与 gateway runtime 的值匹配。
 
+### 好友声音选择
+
+创建 AI 好友后，在“朋友语音”页选择该好友即可：
+
+- 直接选择 **温柔女声、成熟御姐音、温暖闺蜜音、知性姐姐音、甜美女声**；选择会立即持久绑定对应 MiniMax 系统 voice ID、语速和音调；
+- 不上传声音也能使用默认“温柔女声”开始 AI 对话；
+- 或导入 MP3/M4A/WAV；
+- 或点击“开始录入声音”，录制至少 10 秒后再次点击停止，确认拥有授权后上传并绑定模仿声音。
+
+内置 voice ID 来自 [MiniMax System Voice ID List](https://platform.minimax.io/docs/faq/system-voice-id)。自录/导入素材仍必须经过授权确认，内置音色不需要上传素材。
+
 完整 route contract、导入顺序与本地运维命令见 [`docs/integration-guide.md`](docs/integration-guide.md) 和 [`docs/runbook.md`](docs/runbook.md)。
 
 任何未配置的 ASR/LLM/TTS/云端能力都必须在 UI 与文档中明确标示，不能用 fake 冒充生产实现。

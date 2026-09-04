@@ -24,10 +24,14 @@ private struct SleepMateGatewayConfiguration {
             !token.isEmpty
         else { return nil }
 
-        let voiceID = voiceIDOverride ?? environment["SLEEPMATE_VOICE_ID"]
-        guard let voiceID,
-              !voiceID.isEmpty,
-              !voiceID.contains(where: { $0.isWhitespace }) else { return nil }
+        let requestedVoiceID = voiceIDOverride ?? environment["SLEEPMATE_VOICE_ID"] ?? VoiceConfiguration.defaultStock.reference
+        let voiceID = requestedVoiceID.hasPrefix("voice://stock")
+            ? VoiceConfiguration.defaultStock.reference
+            : requestedVoiceID
+        guard !voiceID.isEmpty,
+              voiceID.count <= 200,
+              voiceID.trimmingCharacters(in: .whitespacesAndNewlines) == voiceID,
+              !voiceID.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) else { return nil }
 
         let model: LLMModel
         switch environment["SLEEPMATE_LLM_MODEL"] {
@@ -53,7 +57,7 @@ private struct SleepMateGatewayConfiguration {
         return Self(
             baseURL: baseURL,
             token: token,
-            voice: VoiceConfiguration(reference: voiceID),
+            voice: BuiltInVoicePreset.configuration(for: voiceID),
             model: model,
             reasoningEffort: reasoningEffort
         )
@@ -422,7 +426,9 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
             SleepMateGatewayConfiguration(
                 baseURL: $0.baseURL,
                 token: $0.appToken,
-                voice: VoiceConfiguration(reference: ProcessInfo.processInfo.environment["SLEEPMATE_VOICE_ID"] ?? "voice://stock-default"),
+                voice: BuiltInVoicePreset.configuration(
+                    for: ProcessInfo.processInfo.environment["SLEEPMATE_VOICE_ID"] ?? VoiceConfiguration.defaultStock.reference
+                ),
                 model: Self.model(from: ProcessInfo.processInfo.environment["SLEEPMATE_LLM_MODEL"]),
                 reasoningEffort: Self.reasoning(from: ProcessInfo.processInfo.environment["SLEEPMATE_LLM_REASONING"])
             )
@@ -430,7 +436,7 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         let repository = try? FileAIFriendRepository(fileURL: Self.defaultFriendStoreURL)
         self.init(
             replyPipeline: configuration?.makeReplyPipeline(),
-            voiceConfiguration: configuration?.voice ?? VoiceConfiguration(reference: "voice://stock-default"),
+            voiceConfiguration: configuration?.voice ?? .defaultStock,
             model: configuration?.model ?? .gpt56Sol,
             reasoningEffort: configuration?.reasoningEffort ?? .medium,
             friendRepository: repository ?? InMemoryAIFriendRepository(),
@@ -472,6 +478,10 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         }
     }
 
+    private func normalizedVoice(_ reference: String) -> VoiceConfiguration {
+        BuiltInVoicePreset.configuration(for: reference)
+    }
+
     private static func model(from rawValue: String?) -> LLMModel {
         rawValue == LLMModel.gpt56Terra.rawValue ? .gpt56Terra : .gpt56Sol
     }
@@ -485,9 +495,9 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
             return SleepMateGatewayConfiguration(
                 baseURL: configured.baseURL,
                 token: configured.appToken,
-                voice: VoiceConfiguration(reference: voiceIDOverride ?? ProcessInfo.processInfo.environment["SLEEPMATE_VOICE_ID"] ?? "voice://stock-default"),
-                model: .gpt56Sol,
-                reasoningEffort: .medium
+                voice: normalizedVoice(voiceIDOverride ?? ProcessInfo.processInfo.environment["SLEEPMATE_VOICE_ID"] ?? VoiceConfiguration.defaultStock.reference),
+                model: Self.model(from: ProcessInfo.processInfo.environment["SLEEPMATE_LLM_MODEL"]),
+                reasoningEffort: Self.reasoning(from: ProcessInfo.processInfo.environment["SLEEPMATE_LLM_REASONING"])
             )
         }
         return SleepMateGatewayConfiguration.current(voiceIDOverride: voiceIDOverride)
@@ -593,7 +603,7 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
             return false
         }
         replyPipeline = configuration.makeReplyPipeline()
-        voiceConfiguration = VoiceConfiguration(reference: friend.voiceReference)
+        voiceConfiguration = normalizedVoice(friend.voiceReference)
         model = configuration.model
         reasoningEffort = configuration.reasoningEffort
         friendID = friend.id
@@ -603,12 +613,16 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         return true
     }
 
-    func bindClonedVoice(_ voice: VoiceConfiguration, to friendID: UUID) throws -> StoredAIFriend {
+    func bindVoice(_ voice: VoiceConfiguration, to friendID: UUID) throws -> StoredAIFriend {
         let friend = try friendRepository.bindVoice(voice.reference, to: friendID)
         reloadPersistedFriends()
         guard self.friendID == friendID else { return friend }
-        guard activateFriendRecord(friend) else { throw VoiceSessionConfigurationError.gatewayUnavailable }
+        _ = activateFriendRecord(friend)
         return friend
+    }
+
+    func bindClonedVoice(_ voice: VoiceConfiguration, to friendID: UUID) throws -> StoredAIFriend {
+        try bindVoice(voice, to: friendID)
     }
 
     deinit {

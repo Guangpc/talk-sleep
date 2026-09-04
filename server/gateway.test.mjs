@@ -92,6 +92,34 @@ test("TTS route returns audio as app-facing base64 and does not proxy raw provid
   });
 });
 
+test("TTS route accepts official system voice IDs and forwards speed and pitch", async () => {
+  let received;
+  const { llm } = fixtures();
+  const speech = {
+    async synthesize(input) {
+      received = input;
+      return { audio: Buffer.from([0x49, 0x44, 0x33]), format: "mp3", sampleRate: 32000 };
+    },
+  };
+  await withGateway({ llm, speech, authToken: "local-test-token" }, async (base) => {
+    const response = await fetch(`${base}/v1/tts/synthesize`, {
+      method: "POST",
+      headers: { authorization: "Bearer local-test-token", "content-type": "application/json" },
+      body: JSON.stringify({
+        model: "speech-2.8-hd",
+        voiceId: "Chinese (Mandarin)_Mature_Woman",
+        speed: 0.9,
+        pitch: -2,
+        text: "晚安",
+      }),
+    });
+    assert.equal(response.status, 200);
+    assert.equal(received.voiceId, "Chinese (Mandarin)_Mature_Woman");
+    assert.equal(received.speed, 0.9);
+    assert.equal(received.pitch, -2);
+  });
+});
+
 test("oversized JSON is rejected before provider invocation", async () => {
   let called = false;
   const llm = { async *streamChat() { called = true; yield { type: "done" }; } };

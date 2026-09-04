@@ -119,8 +119,14 @@ function validateSpeech(input) {
   if (!input || typeof input !== "object" || typeof input.text !== "string" || input.text.trim().length === 0 || input.text.length > 4000) {
     throw Object.assign(new Error("invalid speech text"), { kind: "invalid_request", status: 400 });
   }
-  if (!safeIdentifier(input.voiceId)) {
+  if (!safeVoiceIdentifier(input.voiceId)) {
     throw Object.assign(new Error("invalid voice id"), { kind: "invalid_request", status: 400 });
+  }
+  if (input.speed !== undefined && (!Number.isFinite(input.speed) || input.speed < 0.5 || input.speed > 2)) {
+    throw Object.assign(new Error("invalid speech speed"), { kind: "invalid_request", status: 400 });
+  }
+  if (input.pitch !== undefined && (!Number.isInteger(input.pitch) || input.pitch < -12 || input.pitch > 12)) {
+    throw Object.assign(new Error("invalid speech pitch"), { kind: "invalid_request", status: 400 });
   }
   if (input.model !== undefined && !safeIdentifier(input.model, 120)) {
     throw Object.assign(new Error("invalid speech model"), { kind: "invalid_request", status: 400 });
@@ -195,6 +201,14 @@ function decodeBase64Audio(value) {
     throw Object.assign(new Error("invalid audio"), { kind: "invalid_request", status: 400 });
   }
   return audio;
+}
+
+function safeVoiceIdentifier(value, maxLength = 200) {
+  return typeof value === "string"
+    && value.length > 0
+    && value.length <= maxLength
+    && value.trim() === value
+    && !/[\u0000-\u001f\u007f]/.test(value);
 }
 
 function safeIdentifier(value, maxLength = 200) {

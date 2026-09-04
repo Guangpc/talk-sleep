@@ -2,10 +2,21 @@ import Foundation
 
 public struct VoiceConfiguration: Equatable, Sendable {
     public let reference: String
+    public let speed: Double
+    public let pitch: Int
 
-    public init(reference: String) {
+    public init(reference: String, speed: Double = 1.0, pitch: Int = 0) {
         self.reference = reference
+        self.speed = min(max(speed, 0.5), 2.0)
+        self.pitch = min(max(pitch, -12), 12)
     }
+
+    /// A provider-supported gentle stock voice used until the user binds another preset or clone.
+    public static let defaultStock = VoiceConfiguration(
+        reference: "Chinese (Mandarin)_Soft_Girl",
+        speed: 0.92,
+        pitch: 1
+    )
 }
 
 public struct StyleSummary: Equatable, Sendable {

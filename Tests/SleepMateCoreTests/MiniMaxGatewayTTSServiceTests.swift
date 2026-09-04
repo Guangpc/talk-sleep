@@ -13,7 +13,7 @@ final class MiniMaxGatewayTTSServiceTests: XCTestCase {
 
         let audio = try await service.synthesize(
             text: "晚安，先陪你待一会儿。",
-            voice: VoiceConfiguration(reference: "voice://friend-123")
+            voice: VoiceConfiguration(reference: "voice://friend-123", speed: 0.90, pitch: -2)
         )
 
         XCTAssertEqual(audio, Data([0, 1, 2, 3, 4]))
@@ -28,6 +28,8 @@ final class MiniMaxGatewayTTSServiceTests: XCTestCase {
         XCTAssertEqual(object["text"] as? String, "晚安，先陪你待一会儿。")
         XCTAssertEqual(object["voiceId"] as? String, "voice://friend-123")
         XCTAssertEqual(object["model"] as? String, "speech-2.8-hd")
+        XCTAssertEqual(object["speed"] as? Double, 0.90)
+        XCTAssertEqual(object["pitch"] as? Int, -2)
         XCTAssertFalse(String(decoding: body, as: UTF8.self).contains("gateway-token-for-tests"))
     }
 

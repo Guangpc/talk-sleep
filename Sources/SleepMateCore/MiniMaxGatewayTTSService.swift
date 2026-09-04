@@ -51,6 +51,8 @@ public struct MiniMaxGatewayTTSService: TTSService, Sendable {
         let model: String
         let text: String
         let voiceId: String
+        let speed: Double
+        let pitch: Int
     }
 
     private struct ResponseBody: Decodable {
@@ -130,7 +132,9 @@ public struct MiniMaxGatewayTTSService: TTSService, Sendable {
         request.setValue("Bearer \(gatewayToken)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.httpBody = try JSONEncoder().encode(RequestBody(model: model, text: text, voiceId: voice.reference))
+        request.httpBody = try JSONEncoder().encode(
+            RequestBody(model: model, text: text, voiceId: voice.reference, speed: voice.speed, pitch: voice.pitch)
+        )
         return request
     }
 
