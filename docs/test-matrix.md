@@ -26,7 +26,7 @@
 
 - `server`：`npm test` 49/49；包含真实 `createServerFromEnv` 的 MiniMax upload→clone composition test；另有一次真实本地 gateway smoke，OpenAI SSE 与 MiniMax TTS 均 HTTP 200，未输出 provider key。
 - `SleepMateCore`：`swift test` 49/49；覆盖 LLM SSE client、MiniMax gateway TTS、授权 source validator、upload→clone client、LLM→TTS reply pipeline、空/不完整回复防 fake success。
-- iOS 工程：`xcodebuild ... CODE_SIGNING_ALLOWED=NO build` 与 generic `build-for-testing` 成功；真实 iPhone AI 会话、实际文件 picker/clone、锁屏/中断和 provider-side 声音生命周期仍是发布门。
+- iOS 工程：签名 device build、安装、启动成功；真机 XCUITest `SleepMateAppLaunchTests` 首次因 Form 下方控件未滚动失败，加入滚动后于 2026-09-04 11:35 通过（1/1）。App 已用局域网 gateway 地址启动并显示可配置路径；实际文件 picker/clone、真实 AI 连续对话、锁屏/中断和 provider-side 声音生命周期仍是发布门。
 
 
 ## 设备与系统矩阵
