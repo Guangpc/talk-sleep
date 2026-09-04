@@ -399,6 +399,7 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
     private var reasoningEffort: LLMReasoningEffort
     @Published private(set) var friendName = "AI Friend"
     private var friendContext = ""
+    private var friendID: UUID?
     @Published private(set) var friendReady = false
     private var replyTask: Task<Void, Never>?
     private var pendingAudio: Data?
@@ -406,14 +407,17 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
     private var conversation: [LLMMessage] = []
     private var latestTranscript = ""
     private var lastRespondedTranscript = ""
+    private let friendRepository: any AIFriendRepository
 
     override convenience init() {
         let configuration = SleepMateGatewayConfiguration.current()
+        let repository = try? FileAIFriendRepository(fileURL: Self.defaultFriendStoreURL)
         self.init(
             replyPipeline: configuration?.makeReplyPipeline(),
             voiceConfiguration: configuration?.voice ?? VoiceConfiguration(reference: "voice://unconfigured"),
             model: configuration?.model ?? .gpt56Sol,
-            reasoningEffort: configuration?.reasoningEffort ?? .medium
+            reasoningEffort: configuration?.reasoningEffort ?? .medium,
+            friendRepository: repository ?? InMemoryAIFriendRepository()
         )
     }
 
@@ -421,13 +425,16 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         replyPipeline: VoiceReplyPipeline?,
         voiceConfiguration: VoiceConfiguration,
         model: LLMModel,
-        reasoningEffort: LLMReasoningEffort
+        reasoningEffort: LLMReasoningEffort,
+        friendRepository: any AIFriendRepository = InMemoryAIFriendRepository()
     ) {
         self.replyPipeline = replyPipeline
         self.voiceConfiguration = voiceConfiguration
         self.model = model
         self.reasoningEffort = reasoningEffort
+        self.friendRepository = friendRepository
         super.init()
+        restorePersistedFriend()
         audio.onSpeechStarted = { [weak self] in
             Task { @MainActor in self?.receiveSpeechStarted() }
         }
@@ -467,7 +474,43 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         friendName = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "AI Friend" : name.trimmingCharacters(in: .whitespacesAndNewlines)
         friendContext = context.trimmingCharacters(in: .whitespacesAndNewlines)
         friendReady = true
+        let stored = StoredAIFriend(
+            id: friendID ?? UUID(),
+            name: friendName,
+            reviewedProfile: friendContext,
+            voiceReference: voice.reference,
+            createdAt: Date()
+        )
+        friendID = stored.id
+        do {
+            try friendRepository.save(stored)
+        } catch {
+            errorMessage = String(localized: "ai_friend.persistence_error")
+            return false
+        }
         return true
+    }
+
+    private static var defaultFriendStoreURL: URL {
+        let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        return directory.appendingPathComponent("SleepMate/friends.json")
+    }
+
+    private func restorePersistedFriend() {
+        guard let stored = try? friendRepository.loadAll().first,
+              let configuration = SleepMateGatewayConfiguration.current(voiceIDOverride: stored.voiceReference) else { return }
+        replyPipeline = configuration.makeReplyPipeline()
+        voiceConfiguration = VoiceConfiguration(reference: stored.voiceReference)
+        model = configuration.model
+        reasoningEffort = configuration.reasoningEffort
+        friendID = stored.id
+        friendName = stored.name
+        friendContext = stored.reviewedProfile
+        friendReady = true
+    }
+
+    var persistedFriends: [StoredAIFriend] {
+        (try? friendRepository.loadAll()) ?? []
     }
 
     func configureFriendUsingEnvironment(name: String, context: String) -> Bool {

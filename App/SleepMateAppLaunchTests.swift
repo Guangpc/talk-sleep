@@ -1,6 +1,21 @@
 import XCTest
 
 final class SleepMateAppLaunchTests: XCTestCase {
+    func testBottomTabsExposeTextAndVoiceDestinations() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
+        app.launch()
+
+        let textTab = app.tabBars.buttons["文字与文件"]
+        let voiceTab = app.tabBars.buttons["朋友语音"]
+        XCTAssertTrue(textTab.waitForExistence(timeout: 3))
+        XCTAssertTrue(voiceTab.waitForExistence(timeout: 3))
+        voiceTab.tap()
+        XCTAssertTrue(app.staticTexts["朋友语音"].waitForExistence(timeout: 3))
+        textTab.tap()
+        XCTAssertTrue(app.staticTexts["文字与文件"].waitForExistence(timeout: 3))
+    }
+
     func testLaunchShowsAIFriendEmptyState() {
         let app = XCUIApplication()
         app.launchArguments += ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]

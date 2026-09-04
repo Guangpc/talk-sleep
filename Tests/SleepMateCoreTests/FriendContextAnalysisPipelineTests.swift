@@ -3,7 +3,7 @@ import XCTest
 
 final class FriendContextAnalysisPipelineTests: XCTestCase {
     func testAnalyzeReturnsEditableStyleHabitsLocationsAndMemories() async throws {
-        let json = #"{"contentSummary":"常聊摄影和睡前日常","styleTraits":["回复简短","语气温柔"],"catchphrases":["慢慢来"],"habits":["睡前喝温水"],"importantLocations":["杭州西湖"],"importantMemories":["一起在西湖看过日落"],"topicPreferences":["摄影"]}"#
+        let json = #"{"contentSummary":"常聊摄影和睡前日常","styleTraits":["回复简短","语气温柔"],"catchphrases":["慢慢来"],"habits":["睡前喝温水"],"importantLocations":["杭州西湖"],"workplace":["西湖区人民医院"],"workEnvironment":["医院轮班环境"],"workContent":["负责患者沟通和护理记录"],"importantMemories":["一起在西湖看过日落"],"topicPreferences":["摄影"]}"#
         let llm = AnalysisLLM(events: [.text("```json\n"), .text(json), .text("\n```"), .done])
         let pipeline = FriendContextAnalysisPipeline(llm: llm)
 
@@ -17,6 +17,11 @@ final class FriendContextAnalysisPipelineTests: XCTestCase {
         XCTAssertEqual(result.catchphrases, ["慢慢来"])
         XCTAssertEqual(result.habits, ["睡前喝温水"])
         XCTAssertEqual(result.importantLocations, ["杭州西湖"])
+        XCTAssertEqual(result.workplace, ["西湖区人民医院"])
+        XCTAssertEqual(result.workEnvironment, ["医院轮班环境"])
+        XCTAssertEqual(result.workContent, ["负责患者沟通和护理记录"])
+        XCTAssertTrue(result.conversationContext.contains("西湖区人民医院"))
+        XCTAssertTrue(result.conversationContext.contains("负责患者沟通和护理记录"))
         XCTAssertEqual(result.importantMemories, ["一起在西湖看过日落"])
         XCTAssertEqual(result.topicPreferences, ["摄影"])
         XCTAssertTrue(result.conversationContext.contains("杭州西湖"))
@@ -43,7 +48,7 @@ final class FriendContextAnalysisPipelineTests: XCTestCase {
     }
 
     func testAnalyzeRejectsEmptyOrMalformedStructuredProfile() async {
-        let empty = #"{"contentSummary":"","styleTraits":[],"catchphrases":[],"habits":[],"importantLocations":[],"importantMemories":[],"topicPreferences":[]}"#
+        let empty = #"{"contentSummary":"","styleTraits":[],"catchphrases":[],"habits":[],"importantLocations":[],"workplace":[],"workEnvironment":[],"workContent":[],"importantMemories":[],"topicPreferences":[]}"#
         for response in [empty, "not json"] {
             let pipeline = FriendContextAnalysisPipeline(llm: AnalysisLLM(events: [.text(response), .done]))
             do {

@@ -29,6 +29,7 @@
 "ai_friend.ready" = "AI 好友已准备好";
 "ai_friend.start_session" = "开始 AI 对话";
 "ai_friend.gateway_unavailable" = "请先配置 gateway URL 和 App token，再创建 AI 好友。";
+"ai_friend.persistence_error" = "AI 好友已创建，但本地保存失败，请检查设备存储空间后重试。";
 "ai_friend.badge" = "AI 好友";
 "voice_session.title" = "语音会话";
 "voice_session.status" = "语音会话状态";

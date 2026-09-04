@@ -29,6 +29,7 @@
 "ai_friend.ready" = "AI friend is ready";
 "ai_friend.start_session" = "Start AI conversation";
 "ai_friend.gateway_unavailable" = "Configure the gateway URL and app token before creating an AI friend.";
+"ai_friend.persistence_error" = "The AI friend was created, but local saving failed. Check device storage and try again.";
 "ai_friend.badge" = "AI Friend";
 "voice_session.title" = "Voice Session";
 "voice_session.status" = "Voice session status";

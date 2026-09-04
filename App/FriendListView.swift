@@ -10,7 +10,11 @@ private enum FriendInputField: Hashable {
 }
 
 struct FriendListView: View {
-    @StateObject private var voiceSession = VoiceSessionViewModel()
+    @ObservedObject var voiceSession: VoiceSessionViewModel
+
+    init(session: VoiceSessionViewModel? = nil) {
+        _voiceSession = ObservedObject(wrappedValue: session ?? VoiceSessionViewModel())
+    }
     @State private var friendName = ""
     @State private var friendContext = ""
     @State private var analysisDraft = ""
@@ -33,161 +37,121 @@ struct FriendListView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    Text(String(localized: "ai_friend.setup_title"))
-                        .font(.headline)
-                    Text(String(localized: "ai_friend.setup_message"))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    workspaceHeader
+                    profileEditor
+                    sourceEditor
+                    primaryAction
                 }
-
-                Section(String(localized: "ai_friend.profile_section")) {
-                    TextField(String(localized: "ai_friend.name"), text: $friendName)
-                        .focused($focusedInput, equals: .name)
-                        .submitLabel(.done)
-                        .accessibilityIdentifier("friend-name-input")
-                        .onChange(of: friendName) { _, _ in
-                            analysisDraft = ""
-                        }
-                    Text(String(localized: "ai_friend.context_hint"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextEditor(text: $friendContext)
-                        .focused($focusedInput, equals: .context)
-                        .accessibilityIdentifier("friend-context-input")
-                        .frame(minHeight: 110)
-                        .overlay(alignment: .topLeading) {
-                            if friendContext.isEmpty {
-                                Text(String(localized: "ai_friend.context_placeholder"))
-                                    .foregroundStyle(.tertiary)
-                                    .padding(.top, 8)
-                                    .padding(.leading, 5)
-                                    .allowsHitTesting(false)
-                            }
-                        }
-                        .onChange(of: friendContext) { _, _ in
-                            analysisDraft = ""
-                        }
-
-                    Button {
-                        setupError = ""
-                        isImportingText = true
-                    } label: {
-                        Label(String(localized: "ai_friend.import_text_file"), systemImage: "doc.text")
-                    }
-                    .fileImporter(
-                        isPresented: $isImportingText,
-                        allowedContentTypes: [.plainText, .utf8PlainText],
-                        allowsMultipleSelection: false,
-                        onCompletion: importText
-                    )
-
-                    Button {
-                        analyzeFriendContext()
-                    } label: {
-                        if isAnalyzing {
-                            HStack {
-                                ProgressView()
-                                Text(String(localized: "ai_friend.analyzing"))
-                            }
-                        } else {
-                            Label(String(localized: "ai_friend.analyze"), systemImage: "sparkles")
-                        }
-                    }
-                    .disabled(friendContext.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isBusy)
-
-                    if !analysisDraft.isEmpty {
-                        Text(String(localized: "ai_friend.analysis_result"))
-                            .font(.subheadline.weight(.semibold))
-                        TextEditor(text: $analysisDraft)
-                            .focused($focusedInput, equals: .analysis)
-                            .accessibilityIdentifier("friend-analysis-input")
-                            .frame(minHeight: 180)
-                        Text(String(localized: "ai_friend.analysis_confirmation"))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Section(String(localized: "ai_friend.voice_section")) {
-                    Text(String(localized: "ai_friend.voice_hint"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Button {
-                        setupError = ""
-                        isImportingAudio = true
-                    } label: {
-                        Label(String(localized: "ai_friend.choose_audio"), systemImage: "waveform")
-                    }
-                    .accessibilityIdentifier("friend-audio-import-button")
-                    .fileImporter(
-                        isPresented: $isImportingAudio,
-                        allowedContentTypes: supportedAudioTypes,
-                        allowsMultipleSelection: false,
-                        onCompletion: importAudio
-                    )
-
-                    if let selectedAudio {
-                        Label(
-                            String(format: String(localized: "ai_friend.audio_selected"), selectedAudio.filename, selectedAudio.durationSeconds),
-                            systemImage: "checkmark.circle.fill"
-                        )
-                        .foregroundStyle(.secondary)
-                    }
-                    Toggle(String(localized: "ai_friend.consent_toggle"), isOn: $consentConfirmed)
-                    Text(String(localized: "ai_friend.consent_message"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Section {
-                    Button {
-                        createFriend()
-                    } label: {
-                        if isWorking {
-                            ProgressView()
-                        } else {
-                            Label(String(localized: "ai_friend.create"), systemImage: "person.badge.plus")
-                        }
-                    }
-                    .disabled(isBusy)
-
-                    if !setupStatus.isEmpty {
-                        Label(setupStatus, systemImage: "arrow.triangle.2.circlepath")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    if !setupError.isEmpty {
-                        Text(setupError)
-                            .font(.footnote)
-                            .foregroundStyle(.red)
-                    }
-
-                    if voiceSession.friendReady {
-                        NavigationLink {
-                            VoiceSessionView(session: voiceSession)
-                        } label: {
-                            Label(String(localized: "ai_friend.start_session"), systemImage: "waveform")
-                        }
-                    }
-                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 18)
             }
-            .navigationTitle(String(localized: "ai_friend.title"))
             .scrollDismissesKeyboard(.interactively)
+            .navigationTitle("文字与文件")
         }
-        .simultaneousGesture(
-            TapGesture().onEnded {
-                focusedInput = nil
-            }
-        )
+        .simultaneousGesture(TapGesture().onEnded { focusedInput = nil })
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button(String(localized: "keyboard.done")) {
-                    focusedInput = nil
+                Button(String(localized: "keyboard.done")) { focusedInput = nil }
+            }
+        }
+    }
+
+    private var workspaceHeader: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(String(localized: "ai_friend.setup_title"))
+                .font(.largeTitle.bold())
+            Text(String(localized: "ai_friend.setup_message"))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var profileEditor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("朋友性格 / 好友画像", systemImage: "person.crop.circle.badge.checkmark")
+                .font(.headline)
+            TextField(String(localized: "ai_friend.name"), text: $friendName)
+                .focused($focusedInput, equals: .name)
+                .submitLabel(.done)
+                .textFieldStyle(.roundedBorder)
+                .accessibilityIdentifier("friend-name-input")
+                .onChange(of: friendName) { _, _ in analysisDraft = "" }
+            TextEditor(text: $analysisDraft)
+                .focused($focusedInput, equals: .analysis)
+                .frame(minHeight: 190)
+                .padding(8)
+                .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
+                .overlay(alignment: .topLeading) {
+                    if analysisDraft.isEmpty {
+                        Text("总结后，朋友性格、聊天风格、地址、重要地点、工作地点、工作环境、工作内容、生活习惯和重要记忆会显示在这里。")
+                            .foregroundStyle(.tertiary)
+                            .padding(16)
+                            .allowsHitTesting(false)
+                    }
                 }
+                .accessibilityIdentifier("friend-analysis-input")
+            if !analysisDraft.isEmpty {
+                Text(String(localized: "ai_friend.analysis_confirmation"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(16)
+        .background(Color(uiColor: .systemBackground), in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(.quaternary))
+    }
+
+    private var sourceEditor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("聊天记录与文字资料", systemImage: "text.bubble")
+                .font(.headline)
+            TextEditor(text: $friendContext)
+                .focused($focusedInput, equals: .context)
+                .frame(minHeight: 210)
+                .padding(8)
+                .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
+                .overlay(alignment: .topLeading) {
+                    if friendContext.isEmpty {
+                        Text(String(localized: "ai_friend.context_placeholder"))
+                            .foregroundStyle(.tertiary)
+                            .padding(16)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .accessibilityIdentifier("friend-context-input")
+            HStack {
+                Button { setupError = ""; isImportingText = true } label: {
+                    Label(String(localized: "ai_friend.import_text_file"), systemImage: "doc.text")
+                }
+                .buttonStyle(.bordered)
+                .fileImporter(isPresented: $isImportingText, allowedContentTypes: [.plainText, .utf8PlainText], allowsMultipleSelection: false, onCompletion: importText)
+                Button { analyzeFriendContext() } label: {
+                    if isAnalyzing { ProgressView() } else { Label(String(localized: "ai_friend.analyze"), systemImage: "sparkles") }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(friendContext.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isBusy)
+            }
+            .controlSize(.large)
+        }
+    }
+
+    private var primaryAction: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button { createFriend() } label: {
+                Label(String(localized: "ai_friend.create"), systemImage: "person.badge.plus")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(isBusy)
+            if !setupStatus.isEmpty { Text(setupStatus).font(.footnote).foregroundStyle(.secondary) }
+            if !setupError.isEmpty { Text(setupError).font(.footnote).foregroundStyle(.red) }
+            if voiceSession.friendReady {
+                Label(String(localized: "ai_friend.ready"), systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
             }
         }
     }
