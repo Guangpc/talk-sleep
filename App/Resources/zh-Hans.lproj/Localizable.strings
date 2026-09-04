@@ -41,7 +41,12 @@
 "voice_setup.audio_selected" = "已选择音频：%@ · %.1f 秒";
 "voice_setup.replace_audio" = "更换声音文件";
 "voice_setup.authorize" = "我确认已经获得使用此声音的授权";
-"voice_setup.authorize_hint" = "只上传你有权处理的音频。上传前可以取消。";
+"voice_setup.authorize_hint" = "声音克隆会把音频发送到你配置的 SleepMate gateway，并由 MiniMax 云端处理。请逐项确认后再上传。";
+"voice_setup.intended_use" = "我只会把这个声音用于当前 AI 好友的陪伴对话";
+"voice_setup.cloud_processing" = "我理解音频会发送到 gateway 和 MiniMax 云端处理";
+"voice_setup.retention_deletion" = "我理解服务商的数据保留与删除规则，并可请求删除克隆声音";
+"voice_setup.cancel_binding" = "取消上传与绑定";
+"voice_setup.binding_cancelled" = "已取消上传与绑定。";
 "voice_setup.bind" = "上传并绑定声音";
 "voice_setup.binding" = "正在上传并绑定声音…";
 "voice_setup.bound" = "声音已绑定到 %@";
@@ -90,7 +95,7 @@
 "friend_analysis.cancelled" = "好友画像分析已取消。";
 "voice_setup.start_recording" = "开始录入声音";
 "voice_setup.stop_recording" = "停止录音并使用";
-"voice_setup.recording" = "正在录音，再次点击按钮即可停止。至少录制 10 秒。";
+"voice_setup.recording" = "正在录音，再次点击按钮即可停止。录制 10 秒至 5 分钟。";
 "voice_setup.recording_ready" = "录音已准备好，请确认授权后上传并绑定声音。";
 "voice_setup.recording_permission_denied" = "请在系统设置中允许麦克风权限后再录音。";
 "voice_setup.recording_start_failed" = "无法开始录音，请检查麦克风后重试。";

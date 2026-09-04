@@ -1,6 +1,6 @@
 # SleepMate
 
-SleepMate 是面向中国大陆、iOS 优先的 AI 好友睡前语音陪聊 MVP。项目当前已完成 Foundation，并接通聊天记录分析、真实麦克风、Apple Speech 实时转写、server gateway、OpenAI-compatible LLM 和 MiniMax Speech 2.8 HD TTS 组成的 AI 好友语音会话 tracer。真实朋友声音的授权证明、provider-side 删除传播、profile/会话持久化和生产合规门仍未完成。
+SleepMate 是面向中国大陆、iOS 优先的 AI 好友睡前语音陪聊 MVP。项目当前已完成 Foundation，并接通聊天记录分析、真实麦克风、Apple Speech 实时转写、server gateway、OpenAI-compatible LLM 和 MiniMax Speech 2.8 HD TTS 组成的 AI 好友语音会话 tracer。真实朋友声音的逐项授权与 gateway attestation 已接通；provider-side 删除传播、会话持久化和生产合规门仍未完成。
 
 ## 当前基准
 
@@ -65,7 +65,7 @@ research/                    Apple/隐私/后台音频研究
 ## 尚未实现
 
 1. **生产 AI 对话 hardening**：会话文字本地记录、terminal-result persistence、重试/退避、弱网/offline 和供应商不训练保证。
-2. **好友声音生产授权链**：当前已有 consent-gated intake、上传、clone 和进程内 binding；授权证明、preview-confirm、缓存、删除传播和生产音频策略仍待完成。
+2. **好友声音生产授权链**：当前已有逐项 consent、上传 attestation、gateway 强制校验、clone 和持久 binding；preview-confirm、授权证明归档、缓存、删除传播和生产音频策略仍待完成。
 3. **完整设备行为**：音频中断、锁屏/后台、通知、最低支持机型、噪声/多人环境和长会话稳定性。
 4. **完整创建 AI 好友**：当前已有文字输入/UTF-8 文件导入、指定好友的可编辑聊天分析结果和 consent-gated 音频 clone；聊天截图 OCR、素材音频 ASR、可靠说话人区分和持久化 profile UI 仍待完成。
 5. **数据与合规**：本地记录、30 天过期、逐类删除、导出、Privacy Manifest 和 App Store 审核材料。
@@ -100,7 +100,7 @@ SLEEPMATE_VOICE_ID=<可选；文字-only 好友使用 stock/test voice>
 - 直接选择 **温柔女声、成熟御姐音、温暖闺蜜音、知性姐姐音、甜美女声**；选择会立即持久绑定对应 MiniMax 系统 voice ID、语速和音调；
 - 不上传声音也能使用默认“温柔女声”开始 AI 对话；
 - 或导入 MP3/M4A/WAV；
-- 或点击“开始录入声音”，录制至少 10 秒后再次点击停止，确认拥有授权后上传并绑定模仿声音。
+- 或点击“开始录入声音”，录制 10 秒至 5 分钟后再次点击停止，逐项确认授权、用途、云端处理与保留/删除规则后上传并绑定模仿声音。
 
 内置 voice ID 来自 [MiniMax System Voice ID List](https://platform.minimax.io/docs/faq/system-voice-id)。自录/导入素材仍必须经过授权确认，内置音色不需要上传素材。
 

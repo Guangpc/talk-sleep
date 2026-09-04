@@ -124,6 +124,10 @@ public struct AuthorizedVoiceSourceValidator: Sendable {
     }
 
     private func isSafeAudioFilename(_ filename: String) -> Bool {
-        !filename.isEmpty && filename.count <= 255 && !filename.contains(where: { $0 == "/" || $0 == "\\" })
+        !filename.isEmpty
+            && filename.count <= 255
+            && filename.trimmingCharacters(in: .whitespacesAndNewlines) == filename
+            && !filename.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains)
+            && !filename.contains(where: { $0 == "/" || $0 == "\\" })
     }
 }

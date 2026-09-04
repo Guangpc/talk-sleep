@@ -617,7 +617,12 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         let friend = try friendRepository.bindVoice(voice.reference, to: friendID)
         reloadPersistedFriends()
         guard self.friendID == friendID else { return friend }
-        _ = activateFriendRecord(friend)
+        guard activateFriendRecord(friend) else {
+            replyPipeline = nil
+            voiceConfiguration = normalizedVoice(friend.voiceReference)
+            friendReady = false
+            throw VoiceSessionConfigurationError.gatewayUnavailable
+        }
         return friend
     }
 

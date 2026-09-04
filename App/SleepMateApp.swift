@@ -57,12 +57,16 @@ private struct TextFriendWorkspace: View {
 }
 
 private struct VoiceFriendWorkspace: View {
+    @Environment(\.scenePhase) private var scenePhase
     @ObservedObject var session: VoiceSessionViewModel
     let onCreateFriend: () -> Void
     @StateObject private var voiceRecorder = FriendVoiceRecorder()
     @State private var selectedFriendID: UUID?
     @State private var selectedAudio: PendingVoiceAudio?
-    @State private var consentConfirmed = false
+    @State private var authorizationConfirmed = false
+    @State private var intendedUseConfirmed = false
+    @State private var cloudProcessingConfirmed = false
+    @State private var retentionAndDeletionConfirmed = false
     @State private var isImportingAudio = false
     @State private var isBinding = false
     @State private var bindingTask: Task<Void, Never>?
@@ -73,6 +77,13 @@ private struct VoiceFriendWorkspace: View {
     private let validator = AuthorizedVoiceSourceValidator()
     private let supportedAudioTypes = ["mp3", "m4a", "wav"].compactMap {
         UTType(filenameExtension: $0, conformingTo: .audio)
+    }
+
+    private var consentComplete: Bool {
+        authorizationConfirmed
+            && intendedUseConfirmed
+            && cloudProcessingConfirmed
+            && retentionAndDeletionConfirmed
     }
 
     private var selectedFriend: StoredAIFriend? {
@@ -124,6 +135,10 @@ private struct VoiceFriendWorkspace: View {
             }
             .navigationTitle(String(localized: "voice_setup.title"))
         }
+        .onDisappear { cancelTransientVoiceOperations() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { cancelTransientVoiceOperations() }
+        }
     }
 
     private var friendPicker: some View {
@@ -139,7 +154,7 @@ private struct VoiceFriendWorkspace: View {
                     selectedFriendID = friend.id
                     _ = session.activateFriend(id: friend.id)
                     selectedAudio = nil
-                    consentConfirmed = false
+                    resetConsent()
                     status = ""
                     error = ""
                 } label: {
@@ -196,7 +211,7 @@ private struct VoiceFriendWorkspace: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
-            .disabled(voiceRecorder.isRecording || isBinding)
+            .disabled(voiceRecorder.isRecording || voiceRecorder.isPreparing || isBinding)
             .accessibilityIdentifier("friend-audio-import-button")
             .fileImporter(
                 isPresented: $isImportingAudio,
@@ -234,11 +249,16 @@ private struct VoiceFriendWorkspace: View {
                 .font(.footnote)
             }
 
-            Toggle(String(localized: "voice_setup.authorize"), isOn: $consentConfirmed)
-                .disabled(selectedAudio == nil || isBinding || voiceRecorder.isRecording)
-            Text(String(localized: "voice_setup.authorize_hint"))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(String(localized: "voice_setup.authorize_hint"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Toggle(String(localized: "voice_setup.authorize"), isOn: $authorizationConfirmed)
+                Toggle(String(localized: "voice_setup.intended_use"), isOn: $intendedUseConfirmed)
+                Toggle(String(localized: "voice_setup.cloud_processing"), isOn: $cloudProcessingConfirmed)
+                Toggle(String(localized: "voice_setup.retention_deletion"), isOn: $retentionAndDeletionConfirmed)
+            }
+            .disabled(selectedAudio == nil || isBinding || voiceRecorder.isRecording || voiceRecorder.isPreparing)
 
             Button {
                 bindVoice(to: friend)
@@ -252,7 +272,15 @@ private struct VoiceFriendWorkspace: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .disabled(selectedAudio == nil || !consentConfirmed || isBinding || voiceRecorder.isRecording)
+            .disabled(selectedAudio == nil || !consentComplete || isBinding || voiceRecorder.isRecording || voiceRecorder.isPreparing)
+
+            if isBinding {
+                Button(role: .cancel) {
+                    cancelBinding(showMessage: true)
+                } label: {
+                    Label(String(localized: "voice_setup.cancel_binding"), systemImage: "xmark.circle")
+                }
+            }
 
             NavigationLink {
                 VoiceSessionView(session: session)
@@ -260,6 +288,7 @@ private struct VoiceFriendWorkspace: View {
                 Label(String(localized: "voice_setup.start_session"), systemImage: "waveform")
             }
             .simultaneousGesture(TapGesture().onEnded { _ = session.activateFriend(id: friend.id) })
+            .disabled(isBinding || voiceRecorder.isRecording || voiceRecorder.isPreparing)
 
             if friend.voiceReference == VoiceConfiguration.defaultStock.reference || friend.voiceReference.hasPrefix("voice://stock") {
                 Text(String(localized: "voice_setup.default_voice_hint"))
@@ -297,7 +326,7 @@ private struct VoiceFriendWorkspace: View {
         .buttonStyle(.plain)
         .padding(12)
         .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
-        .disabled(isBinding || voiceRecorder.isRecording)
+        .disabled(isBinding || voiceRecorder.isRecording || voiceRecorder.isPreparing)
         .accessibilityIdentifier("builtin-voice-\(preset.kind.rawValue)")
     }
 
@@ -306,16 +335,44 @@ private struct VoiceFriendWorkspace: View {
         do {
             _ = try session.bindVoice(preset.configuration, to: friend.id)
             selectedAudio = nil
-            consentConfirmed = false
+            resetConsent()
             status = String(format: String(localized: "voice_setup.builtin_selected"), preset.localizedName, friend.name)
         } catch {
             self.error = error.localizedDescription
         }
     }
 
+    private func resetConsent() {
+        authorizationConfirmed = false
+        intendedUseConfirmed = false
+        cloudProcessingConfirmed = false
+        retentionAndDeletionConfirmed = false
+    }
+
+    private func cancelBinding(showMessage: Bool) {
+        bindingTask?.cancel()
+        bindingTask = nil
+        operationID = UUID()
+        isBinding = false
+        if showMessage {
+            status = ""
+            error = String(localized: "voice_setup.binding_cancelled")
+        }
+    }
+
+    private func cancelTransientVoiceOperations() {
+        voiceRecorder.cancel()
+        cancelBinding(showMessage: false)
+    }
+
     private func toggleRecording() {
         error = ""
         status = ""
+        if !voiceRecorder.isRecording {
+            selectedAudio = nil
+            resetConsent()
+            operationID = UUID()
+        }
         Task { @MainActor in
             do {
                 if let recording = try await voiceRecorder.press() {
@@ -328,7 +385,7 @@ private struct VoiceFriendWorkspace: View {
                     }
                     selectedAudio = recording
                     operationID = UUID()
-                    consentConfirmed = false
+                    resetConsent()
                     status = String(localized: "voice_setup.recording_ready")
                 }
             } catch is CancellationError {
@@ -363,7 +420,7 @@ private struct VoiceFriendWorkspace: View {
                     let localAudio = PendingVoiceAudio(data: data, filename: url.lastPathComponent, durationSeconds: duration)
                     selectedAudio = localAudio
                     operationID = UUID()
-                    consentConfirmed = false
+                    resetConsent()
                     error = ""
                 } catch let validationError as AuthorizedVoiceSourceError {
                     selectedAudio = nil
@@ -389,14 +446,17 @@ private struct VoiceFriendWorkspace: View {
         let requestedAudio = selectedAudio
         bindingTask = Task { @MainActor in
             defer {
-                if selectedFriendID == requestedFriendID, operationID == requestedOperationID { isBinding = false }
+                if selectedFriendID == requestedFriendID, operationID == requestedOperationID {
+                    isBinding = false
+                    bindingTask = nil
+                }
             }
             do {
                 let consent = VoiceCloneConsent(
-                    authorized: consentConfirmed,
-                    intendedUseAcknowledged: consentConfirmed,
-                    cloudProcessingAcknowledged: consentConfirmed,
-                    retentionAndDeletionAcknowledged: consentConfirmed,
+                    authorized: authorizationConfirmed,
+                    intendedUseAcknowledged: intendedUseConfirmed,
+                    cloudProcessingAcknowledged: cloudProcessingConfirmed,
+                    retentionAndDeletionAcknowledged: retentionAndDeletionConfirmed,
                     acceptedAt: Date()
                 )
                 let source = try validator.validateCloneAudio(
@@ -414,7 +474,7 @@ private struct VoiceFriendWorkspace: View {
                 _ = try session.bindClonedVoice(voice, to: requestedFriendID)
                 status = String(format: String(localized: "voice_setup.bound"), friend.name)
                 self.selectedAudio = nil
-                consentConfirmed = false
+                resetConsent()
             } catch let bindingError {
                 guard !Task.isCancelled, selectedFriendID == requestedFriendID, operationID == requestedOperationID else { return }
                 self.error = bindingError.localizedDescription
@@ -458,6 +518,7 @@ private final class FriendVoiceRecorder: NSObject, ObservableObject {
     private var preparationID: UUID?
     private var recorder: AVAudioRecorder?
     private var recordingURL: URL?
+    private var ownsAudioSession = false
 
     func press() async throws -> PendingVoiceAudio? {
         guard !isPreparing else { return nil }
@@ -496,7 +557,10 @@ private final class FriendVoiceRecorder: NSObject, ObservableObject {
         coordinator.reset()
         isPreparing = false
         isRecording = false
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        if ownsAudioSession {
+            ownsAudioSession = false
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
     }
 
     private func startRecording(operationID: UUID) async throws {
@@ -505,6 +569,7 @@ private final class FriendVoiceRecorder: NSObject, ObservableObject {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.record, mode: .default)
         try session.setActive(true)
+        ownsAudioSession = true
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("sleepmate-recording-\(UUID().uuidString.lowercased())")
             .appendingPathExtension("m4a")
@@ -516,7 +581,8 @@ private final class FriendVoiceRecorder: NSObject, ObservableObject {
             AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue,
         ]
         let recorder = try AVAudioRecorder(url: url, settings: settings)
-        guard recorder.prepareToRecord(), recorder.record() else {
+        guard recorder.prepareToRecord(),
+              recorder.record(forDuration: AuthorizedVoiceSourceValidator.maximumCloneDuration) else {
             throw FriendVoiceRecorderError.couldNotStart
         }
         self.recorder = recorder
@@ -530,7 +596,14 @@ private final class FriendVoiceRecorder: NSObject, ObservableObject {
         self.recordingURL = nil
         defer {
             try? FileManager.default.removeItem(at: recordingURL)
-            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            if ownsAudioSession {
+                ownsAudioSession = false
+                try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            }
+        }
+        let values = try recordingURL.resourceValues(forKeys: [.fileSizeKey])
+        if let fileSize = values.fileSize, fileSize > AuthorizedVoiceSourceValidator.maximumAudioBytes {
+            throw AuthorizedVoiceSourceError.audioTooLarge
         }
         let data = try Data(contentsOf: recordingURL, options: [.mappedIfSafe])
         guard !data.isEmpty else { throw AuthorizedVoiceSourceError.emptyAudio }

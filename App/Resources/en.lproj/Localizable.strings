@@ -41,7 +41,12 @@
 "voice_setup.audio_selected" = "Selected audio: %@ · %.1f seconds";
 "voice_setup.replace_audio" = "Choose another voice file";
 "voice_setup.authorize" = "I confirm I have permission to use this voice";
-"voice_setup.authorize_hint" = "Only upload audio you are authorized to process. You can cancel before upload.";
+"voice_setup.authorize_hint" = "Voice cloning sends audio to your configured SleepMate gateway for MiniMax cloud processing. Confirm every item before uploading.";
+"voice_setup.intended_use" = "I will use this voice only for the selected AI friend's conversations";
+"voice_setup.cloud_processing" = "I understand the audio is sent to the gateway and MiniMax cloud";
+"voice_setup.retention_deletion" = "I understand provider retention/deletion rules and can request clone deletion";
+"voice_setup.cancel_binding" = "Cancel upload and binding";
+"voice_setup.binding_cancelled" = "Upload and binding cancelled.";
 "voice_setup.bind" = "Upload and bind voice";
 "voice_setup.binding" = "Uploading and binding voice…";
 "voice_setup.bound" = "Voice bound to %@";
@@ -90,7 +95,7 @@
 "friend_analysis.cancelled" = "The friend-profile analysis was cancelled.";
 "voice_setup.start_recording" = "Record a voice sample";
 "voice_setup.stop_recording" = "Stop and use recording";
-"voice_setup.recording" = "Recording. Tap again to stop. Record at least 10 seconds.";
+"voice_setup.recording" = "Recording. Tap again to stop. Record 10 seconds to 5 minutes.";
 "voice_setup.recording_ready" = "Recording ready. Confirm authorization before uploading and binding it.";
 "voice_setup.recording_permission_denied" = "Allow microphone access in Settings before recording.";
 "voice_setup.recording_start_failed" = "Recording could not start. Check the microphone and try again.";

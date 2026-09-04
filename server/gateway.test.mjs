@@ -38,6 +38,16 @@ function fixtures() {
   };
 }
 
+function completeVoiceConsent() {
+  return {
+    authorized: true,
+    intendedUseAcknowledged: true,
+    cloudProcessingAcknowledged: true,
+    retentionAndDeletionAcknowledged: true,
+    acceptedAt: "2023-11-14T22:13:20Z",
+  };
+}
+
 test("health is public and does not disclose provider configuration", async () => {
   const { llm, speech } = fixtures();
   await withGateway({ llm, speech, authToken: "local-test-token" }, async (base) => {
@@ -141,10 +151,56 @@ test("voice source upload accepts bounded base64 and returns only a file identif
     const response = await fetch(`${base}/v1/tts/upload`, {
       method: "POST",
       headers: { authorization: "Bearer local-test-token", "content-type": "application/json" },
-      body: JSON.stringify({ purpose: "voice_clone", filename: "source.wav", durationSeconds: 12, audioBase64: "SUQz" }),
+      body: JSON.stringify({ purpose: "voice_clone", filename: "source.wav", durationSeconds: 12, audioBase64: "SUQz", consent: completeVoiceConsent() }),
     });
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { fileId: "clone-file-1" });
+  });
+});
+
+test("voice clone upload requires a complete consent attestation before provider invocation", async () => {
+  let called = false;
+  const { llm } = fixtures();
+  const speech = {
+    async synthesize() { return { audio: Buffer.from([1]), format: "mp3" }; },
+    async uploadCloneAudio() { called = true; return { fileId: "unexpected" }; },
+  };
+  await withGateway({ llm, speech, authToken: "local-test-token" }, async (base) => {
+    const headers = { authorization: "Bearer local-test-token", "content-type": "application/json" };
+    const baseBody = { purpose: "voice_clone", filename: "source.wav", durationSeconds: 12, audioBase64: "SUQz" };
+    const missing = await fetch(`${base}/v1/tts/upload`, { method: "POST", headers, body: JSON.stringify(baseBody) });
+    assert.equal(missing.status, 400);
+    const incomplete = await fetch(`${base}/v1/tts/upload`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ ...baseBody, consent: { authorized: true, acceptedAt: "2023-11-14T22:13:20Z" } }),
+    });
+    assert.equal(incomplete.status, 400);
+    assert.equal(called, false);
+  });
+});
+
+test("voice clone upload accepts a safe filename containing spaces", async () => {
+  let filename;
+  const { llm } = fixtures();
+  const speech = {
+    async synthesize() { return { audio: Buffer.from([1]), format: "mp3" }; },
+    async uploadCloneAudio(input) { filename = input.filename; return { fileId: "file-space" }; },
+  };
+  await withGateway({ llm, speech, authToken: "local-test-token" }, async (base) => {
+    const response = await fetch(`${base}/v1/tts/upload`, {
+      method: "POST",
+      headers: { authorization: "Bearer local-test-token", "content-type": "application/json" },
+      body: JSON.stringify({
+        purpose: "voice_clone",
+        filename: "Friend Voice.m4a",
+        durationSeconds: 12,
+        audioBase64: "SUQz",
+        consent: completeVoiceConsent(),
+      }),
+    });
+    assert.equal(response.status, 200);
+    assert.equal(filename, "Friend Voice.m4a");
   });
 });
 
@@ -172,7 +228,7 @@ test("invalid base64 upload is rejected before provider invocation", async () =>
     const response = await fetch(`${base}/v1/tts/upload`, {
       method: "POST",
       headers: { authorization: "Bearer local-test-token", "content-type": "application/json" },
-      body: JSON.stringify({ purpose: "voice_clone", filename: "source.wav", durationSeconds: 12, audioBase64: "not-base64" }),
+      body: JSON.stringify({ purpose: "voice_clone", filename: "source.wav", durationSeconds: 12, audioBase64: "not-base64", consent: completeVoiceConsent() }),
     });
     assert.equal(response.status, 400);
     assert.equal(called, false);
@@ -193,7 +249,7 @@ test("rejects unsafe source filenames and clone identifiers before provider invo
     const unsafeFilename = await fetch(`${base}/v1/tts/upload`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ purpose: "voice_clone", filename: "../friend.wav", durationSeconds: 12, audioBase64: "SUQz" }),
+      body: JSON.stringify({ purpose: "voice_clone", filename: "../friend.wav", durationSeconds: 12, audioBase64: "SUQz", consent: completeVoiceConsent() }),
     });
     assert.equal(unsafeFilename.status, 400);
 
@@ -222,7 +278,7 @@ test("maps MiniMax provider errors to stable public codes for upload and clone",
     const response = await fetch(`${base}/v1/tts/upload`, {
       method: "POST",
       headers: { authorization: "Bearer local-test-token", "content-type": "application/json" },
-      body: JSON.stringify({ purpose: "voice_clone", filename: "source.wav", durationSeconds: 12, audioBase64: "SUQz" }),
+      body: JSON.stringify({ purpose: "voice_clone", filename: "source.wav", durationSeconds: 12, audioBase64: "SUQz", consent: completeVoiceConsent() }),
     });
     assert.equal(response.status, 502);
     assert.deepEqual(await response.json(), { error: { code: "provider_invalid_request" } });

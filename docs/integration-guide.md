@@ -52,7 +52,7 @@ SLEEPMATE_VOICE_ID=<可选 stock/test 或已绑定 voice id>
 5. 切换到“朋友语音”并选择现有好友。可直接绑定 MiniMax 系统内置的温柔女声、成熟御姐音、温暖闺蜜音、知性姐姐音或甜美女声；每项同时定义 voice ID、语速和音调，选择后写入好友并用于后续 TTS。
 6. 不上传声音也可以直接使用默认“温柔女声”开始 AI 对话。
 7. 若要模仿经授权的朋友声音，可选择 `mp3`、`m4a`、`wav`，或点击录音按钮开始录入、再次点击停止。选择/录制阶段只在本地处理，不会上传。
-8. 仅当音频为 10 秒至 5 分钟且不超过 20 MiB 时才通过本地校验。上传前必须阅读说明并明确确认有权使用该声音。
+8. 仅当音频为 10 秒至 5 分钟且不超过 20 MiB 时才通过本地校验。上传前必须逐项确认声音授权、限定用途、gateway/MiniMax 云端处理，以及数据保留与删除规则。
 9. 点击“上传并绑定声音”后，App 先上传 `voice_clone` 文件，再调用 clone route；成功后才用返回的 voice ID 替换当前内置音色。
 10. 点击开始 AI 对话：Apple Speech ASR 在尾部静音后结束当前 input → OpenAI SSE → MiniMax TTS（所选 voice ID、语速和音调）→ AVAudioPlayer。
 
@@ -100,11 +100,18 @@ Content-Type: application/json
   "purpose": "voice_clone",
   "filename": "friend.m4a",
   "durationSeconds": 12,
-  "audioBase64": "<bounded base64>"
+  "audioBase64": "<bounded base64>",
+  "consent": {
+    "authorized": true,
+    "intendedUseAcknowledged": true,
+    "cloudProcessingAcknowledged": true,
+    "retentionAndDeletionAcknowledged": true,
+    "acceptedAt": "2026-09-05T03:30:00Z"
+  }
 }
 ```
 
-gateway 只接受 `voice_clone` / `prompt_audio`，校验扩展名、base64、大小和已验证时长；成功只返回 `{ "fileId": "..." }`。
+gateway 只接受 `voice_clone` / `prompt_audio`，校验安全文件名（允许中间空格）、扩展名、base64、大小和已验证时长；`voice_clone` 还必须携带完整且可解析时间的 consent attestation，否则不会调用 provider。成功只返回 `{ "fileId": "..." }`。
 
 ### voice clone
 
@@ -125,4 +132,4 @@ gateway 只接受 `voice_clone` / `prompt_audio`，校验扩展名、base64、�
 
 ## 6. 现在不宣称的能力
 
-当前没有完成声音来源的真实授权证明、provider-side 删除传播、好友 profile/确认记忆持久化、离线重试策略、句子级流式 TTS、锁屏/后台音频和本轮 picker/静默结束修复的真机回归。真机验证步骤留给设备可用时执行；自动测试结果见 [`test-matrix.md`](test-matrix.md)。
+当前已完成 App 逐项确认和 gateway consent attestation，但没有完成授权证明长期归档、provider-side 删除传播、好友 profile/确认记忆持久化、离线重试策略、句子级流式 TTS、锁屏/后台音频和本轮 picker/静默结束修复的真机回归。真机验证步骤留给设备可用时执行；自动测试结果见 [`test-matrix.md`](test-matrix.md)。

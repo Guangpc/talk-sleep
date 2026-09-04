@@ -36,10 +36,19 @@ public enum MiniMaxGatewayVoiceCloneClientError: Error, Equatable, LocalizedErro
 /// Provider credentials and provider-specific request fields remain server-side.
 public struct MiniMaxGatewayVoiceCloneClient: Sendable {
     private struct UploadRequest: Encodable {
+        struct ConsentAttestation: Encodable {
+            let authorized: Bool
+            let intendedUseAcknowledged: Bool
+            let cloudProcessingAcknowledged: Bool
+            let retentionAndDeletionAcknowledged: Bool
+            let acceptedAt: String
+        }
+
         let purpose: String
         let filename: String
         let audioBase64: String
         let durationSeconds: TimeInterval
+        let consent: ConsentAttestation
     }
 
     private struct UploadResponse: Decodable {
@@ -109,7 +118,8 @@ public struct MiniMaxGatewayVoiceCloneClient: Sendable {
                 purpose: "voice_clone",
                 filename: source.filename,
                 audioBase64: source.data.base64EncodedString(),
-                durationSeconds: source.durationSeconds
+                durationSeconds: source.durationSeconds,
+                consent: consentAttestation(source.consent)
             )
         )
         guard (200..<300).contains(response.statusCode),
@@ -118,6 +128,18 @@ public struct MiniMaxGatewayVoiceCloneClient: Sendable {
             throw error(for: response)
         }
         return payload.fileId
+    }
+
+    private func consentAttestation(_ consent: VoiceCloneConsent) -> UploadRequest.ConsentAttestation {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return UploadRequest.ConsentAttestation(
+            authorized: consent.authorized,
+            intendedUseAcknowledged: consent.intendedUseAcknowledged,
+            cloudProcessingAcknowledged: consent.cloudProcessingAcknowledged,
+            retentionAndDeletionAcknowledged: consent.retentionAndDeletionAcknowledged,
+            acceptedAt: formatter.string(from: consent.acceptedAt)
+        )
     }
 
     private func send<Body: Encodable>(path: [String], body: Body) async throws -> MiniMaxGatewayTTSHTTPResponse {

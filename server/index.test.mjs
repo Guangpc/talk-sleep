@@ -81,6 +81,13 @@ test("composes MiniMax upload and clone methods into the production gateway", as
         filename: "friend.m4a",
         durationSeconds: 12,
         audioBase64: Buffer.from("test-audio").toString("base64"),
+        consent: {
+          authorized: true,
+          intendedUseAcknowledged: true,
+          cloudProcessingAcknowledged: true,
+          retentionAndDeletionAcknowledged: true,
+          acceptedAt: "2023-11-14T22:13:20Z",
+        },
       }),
     });
     assert.equal(upload.status, 200);

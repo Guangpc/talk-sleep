@@ -56,7 +56,7 @@ SleepMateCore（平台无关 Swift Package）
 
 ### AI 好友与素材
 
-`AIFriendProfile` 包含用户自定义名称、头像引用、声音配置、可编辑风格摘要、已确认记忆、话题偏好和禁提主题。`BuiltInVoicePreset` 是内置音色目录 seam：用持久化 voice ID 恢复安全范围内的 speed/pitch，并把 `VoiceConfiguration` 作为唯一 TTS interface；未知 clone ID 自动使用中性音调。`PushToRecordCoordinator` 只表达按键开始/停止状态，`AVAudioRecorder`、权限、临时文件和音频会话留在 iOS adapter；录音和文件最终复用同一 consent-gated clone 流程。`FriendCreationPipeline` 接收 `MaterialAnalysisService`，把完整素材流水线表达为可观察阶段。当前文字路径由 `FriendContextAnalysisPipeline` 使用 app-facing LLM 的 profiling `xhigh`，针对指定好友提取内容摘要、风格、口头禅、习惯、重要地点、重要经历和偏好话题，并把结果作为可编辑候选资料；创建好友后该资料成为会话 system context。真实截图 OCR、素材音频 ASR 和可靠说话人区分仍未实现；音频路径继续使用 consent-gated clone → voice ID → TTS。
+`AIFriendProfile` 包含用户自定义名称、头像引用、声音配置、可编辑风格摘要、已确认记忆、话题偏好和禁提主题。`BuiltInVoicePreset` 是内置音色目录 seam：用持久化 voice ID 恢复安全范围内的 speed/pitch，并把 `VoiceConfiguration` 作为唯一 TTS interface；未知 clone ID 自动使用中性音调。`PushToRecordCoordinator` 只表达按键开始/停止状态，`AVAudioRecorder`、权限、临时文件和音频会话留在 iOS adapter；录音和文件最终复用同一 consent-gated clone 流程；四项授权事实与时间组成 attestation，经认证 gateway 再次强制校验后才调用 provider。录音在页面离开/App 非 active 时取消，最长 5 分钟，并在读取前先检查文件大小。`FriendCreationPipeline` 接收 `MaterialAnalysisService`，把完整素材流水线表达为可观察阶段。当前文字路径由 `FriendContextAnalysisPipeline` 使用 app-facing LLM 的 profiling `xhigh`，针对指定好友提取内容摘要、风格、口头禅、习惯、重要地点、重要经历和偏好话题，并把结果作为可编辑候选资料；创建好友后该资料成为会话 system context。真实截图 OCR、素材音频 ASR 和可靠说话人区分仍未实现；音频路径继续使用 consent-gated clone → voice ID → TTS。
 
 ### 睡眠会话
 
@@ -83,4 +83,4 @@ chatting
 
 ## 明确边界
 
-当前仍不包含本地会话记录/terminal persistence、好友声音授权证明与 provider-side clone 删除传播、preview-confirm、TTS 缓存、完整后台音频、系统中断恢复、图片/音频素材分析、profile 持久化、云端数据、睡眠总结和 App Store 合规材料。后续实现必须保持 Core 纯逻辑 seam 与 iOS adapter seam；gateway 未配置或 provider 失败时不得把本地 tracer 文案描述为真实 AI 回复。
+当前仍不包含本地会话记录/terminal persistence、好友声音授权证明长期归档与 provider-side clone 删除传播、preview-confirm、TTS 缓存、完整后台音频、系统中断恢复、图片/音频素材分析、profile 持久化、云端数据、睡眠总结和 App Store 合规材料。后续实现必须保持 Core 纯逻辑 seam 与 iOS adapter seam；gateway 未配置或 provider 失败时不得把本地 tracer 文案描述为真实 AI 回复。

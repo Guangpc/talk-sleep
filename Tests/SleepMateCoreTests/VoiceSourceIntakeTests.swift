@@ -89,6 +89,20 @@ final class VoiceSourceIntakeTests: XCTestCase {
         }
     }
 
+    func testCloneAudioFilenameContractAcceptsInternalSpacesAndRejectsEdgeWhitespaceOrControls() throws {
+        let validator = AuthorizedVoiceSourceValidator()
+        XCTAssertNoThrow(try validator.validateCloneAudio(
+            data: Data([0x01]), filename: "Friend Voice.m4a", durationSeconds: 10, consent: completeConsent()
+        ))
+        for filename in [" friend.wav", "friend.wav ", "friend\nvoice.wav"] {
+            XCTAssertThrowsError(try validator.validateCloneAudio(
+                data: Data([0x01]), filename: filename, durationSeconds: 10, consent: completeConsent()
+            )) { error in
+                XCTAssertEqual(error as? AuthorizedVoiceSourceError, .invalidFilename)
+            }
+        }
+    }
+
     func testCloneAudioRejectsPathNamesEmptyAndOversizedData() {
         let validator = AuthorizedVoiceSourceValidator()
         let consent = completeConsent()

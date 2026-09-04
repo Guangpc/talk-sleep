@@ -218,13 +218,39 @@ function safeIdentifier(value, maxLength = 200) {
     && !/[\s\u0000-\u001f\u007f]/.test(value);
 }
 
+function safeUploadFilename(value) {
+  return typeof value === "string"
+    && value.length > 0
+    && value.length <= 255
+    && value.trim() === value
+    && !/[\u0000-\u001f\u007f]/.test(value)
+    && !value.includes("/")
+    && !value.includes("\\")
+    && /\.(mp3|m4a|wav)$/i.test(value);
+}
+
+function validateVoiceCloneConsent(consent) {
+  const complete = consent
+    && typeof consent === "object"
+    && consent.authorized === true
+    && consent.intendedUseAcknowledged === true
+    && consent.cloudProcessingAcknowledged === true
+    && consent.retentionAndDeletionAcknowledged === true
+    && typeof consent.acceptedAt === "string"
+    && Number.isFinite(Date.parse(consent.acceptedAt));
+  if (!complete) {
+    throw Object.assign(new Error("complete voice consent attestation is required"), { kind: "invalid_request", status: 400 });
+  }
+}
+
 function validateUpload(input) {
   if (!input || typeof input !== "object" || !["voice_clone", "prompt_audio"].includes(input.purpose)) {
     throw Object.assign(new Error("invalid upload purpose"), { kind: "invalid_request", status: 400 });
   }
-  if (!safeIdentifier(input.filename, 255) || input.filename.includes("/") || input.filename.includes("\\") || !/\.(mp3|m4a|wav)$/i.test(input.filename)) {
+  if (!safeUploadFilename(input.filename)) {
     throw Object.assign(new Error("invalid audio filename"), { kind: "invalid_request", status: 400 });
   }
+  if (input.purpose === "voice_clone") validateVoiceCloneConsent(input.consent);
   if (input.durationSeconds !== undefined && (!Number.isFinite(input.durationSeconds) || input.durationSeconds < 0)) {
     throw Object.assign(new Error("invalid audio duration"), { kind: "invalid_request", status: 400 });
   }

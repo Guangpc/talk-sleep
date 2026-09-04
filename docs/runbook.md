@@ -32,7 +32,7 @@ xcodebuild build-for-testing \
 ## 故障排查
 
 - `401 gateway_unauthorized`：检查 App token 是否与 server runtime 的 `SLEEPMATE_GATEWAY_TOKEN` 完全一致；不要尝试把 provider key 放入 App。
-- `400 invalid_request`：检查 model/reasoning、消息格式、音频扩展名、base64、大小和时长。
+- `400 invalid_request`：检查 model/reasoning、消息格式、音频扩展名、base64、大小和时长；声音克隆上传还必须包含四项均为 `true` 且 `acceptedAt` 可解析的 consent attestation。
 - `502 provider_*`：只根据稳定 code 判断；查看 server 运行状态和 provider 控制台，不打印 provider body。
 - App 显示 gateway unavailable：先确认 `curl --fail http://127.0.0.1:8787/health` 成功，再检查 Gateway 配置卡中的 URL 和 App token 是否与 `.env.local` 的 `SLEEPMATE_GATEWAY_TOKEN` 一致。文字-only 创建不要求自定义 voice ID。
 - 点击“选择朋友声音”没有 picker：选择本地文件不再要求预先勾选授权；确认运行的是包含 `friend-audio-import-button` 的新构建。授权仍在上传/clone 前强制校验。

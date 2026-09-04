@@ -38,9 +38,10 @@
 ## 当前音色与录音自动验证（2026-09-05）
 
 - 按用户要求，本轮不执行真机验收；之前安装/启动记录不作为本功能验收结论。
-- `SleepMateCore`：65/65；覆盖内置音色目录、持久化 voice ID 恢复 speed/pitch、未知 clone 中性参数、按键录音状态与 TTS 请求透传。
-- `server`：50/50；覆盖官方带空格的 MiniMax Mandarin voice ID，以及 speed/pitch 校验和 provider 透传。
+- `SleepMateCore`：67/67；覆盖内置音色目录、持久化 voice ID 恢复 speed/pitch、未知 clone 中性参数、按键录音状态与 TTS 请求透传。
+- `server`：52/52；覆盖官方带空格的 MiniMax Mandarin voice ID，以及 speed/pitch 校验和 provider 透传。
 - iOS：generic iOS Simulator `build-for-testing` 成功，显式 Info.plist lint 成功；当前环境没有可用 simulator runtime，因此未执行 XCUITest runtime。
+- 加固验证：四项 consent attestation 会传到 gateway 并在 provider 调用前强制校验；页面离开/后台取消录音和上传，录音最长 5 分钟且读取前检查 20 MiB；带中间空格的安全文件名端到端接受。
 
 ## 设备与系统矩阵
 
