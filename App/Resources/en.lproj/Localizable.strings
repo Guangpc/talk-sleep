@@ -1,4 +1,5 @@
 "ai_friend.title" = "AI Friends";
+"keyboard.done" = "Done";
 "ai_friend.setup_title" = "Create an AI friend";
 "ai_friend.setup_message" = "Import authorized friend context and optionally a voice sample. Nothing is uploaded until you confirm.";
 "ai_friend.profile_section" = "Friend context";

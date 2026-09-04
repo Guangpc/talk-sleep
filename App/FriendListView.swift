@@ -3,6 +3,12 @@ import SwiftUI
 import SleepMateCore
 import UniformTypeIdentifiers
 
+private enum FriendInputField: Hashable {
+    case name
+    case context
+    case analysis
+}
+
 struct FriendListView: View {
     @StateObject private var voiceSession = VoiceSessionViewModel()
     @State private var friendName = ""
@@ -16,6 +22,7 @@ struct FriendListView: View {
     @State private var isWorking = false
     @State private var setupStatus = ""
     @State private var setupError = ""
+    @FocusState private var focusedInput: FriendInputField?
 
     private let validator = AuthorizedVoiceSourceValidator()
     private let supportedAudioTypes = ["mp3", "m4a", "wav"].compactMap {
@@ -37,6 +44,9 @@ struct FriendListView: View {
 
                 Section(String(localized: "ai_friend.profile_section")) {
                     TextField(String(localized: "ai_friend.name"), text: $friendName)
+                        .focused($focusedInput, equals: .name)
+                        .submitLabel(.done)
+                        .accessibilityIdentifier("friend-name-input")
                         .onChange(of: friendName) { _, _ in
                             analysisDraft = ""
                         }
@@ -44,6 +54,8 @@ struct FriendListView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     TextEditor(text: $friendContext)
+                        .focused($focusedInput, equals: .context)
+                        .accessibilityIdentifier("friend-context-input")
                         .frame(minHeight: 110)
                         .overlay(alignment: .topLeading) {
                             if friendContext.isEmpty {
@@ -89,6 +101,8 @@ struct FriendListView: View {
                         Text(String(localized: "ai_friend.analysis_result"))
                             .font(.subheadline.weight(.semibold))
                         TextEditor(text: $analysisDraft)
+                            .focused($focusedInput, equals: .analysis)
+                            .accessibilityIdentifier("friend-analysis-input")
                             .frame(minHeight: 180)
                         Text(String(localized: "ai_friend.analysis_confirmation"))
                             .font(.caption)
@@ -161,6 +175,20 @@ struct FriendListView: View {
                 }
             }
             .navigationTitle(String(localized: "ai_friend.title"))
+            .scrollDismissesKeyboard(.interactively)
+        }
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                focusedInput = nil
+            }
+        )
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(String(localized: "keyboard.done")) {
+                    focusedInput = nil
+                }
+            }
         }
     }
 

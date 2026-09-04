@@ -1,4 +1,5 @@
 "ai_friend.title" = "AI 好友";
+"keyboard.done" = "完成";
 "ai_friend.setup_title" = "创建 AI 好友";
 "ai_friend.setup_message" = "导入已获授权的朋友资料，可选导入声音样本。只有确认后才会上传。";
 "ai_friend.profile_section" = "好友资料";
