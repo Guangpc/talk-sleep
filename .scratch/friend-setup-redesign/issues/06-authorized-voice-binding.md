@@ -4,12 +4,12 @@
 
 **Blocked by:** 05: Select an existing friend and import an audio file.
 
-**Status:** ready-for-agent
+**Status:** in progress
 
-- [ ] Upload and clone controls stay disabled until an existing friend, valid audio, and explicit authorization are all present.
-- [ ] Provider audio never leaves the device before authorization, and provider credentials remain server-only.
+- [x] Upload and clone controls stay disabled until an existing friend, valid audio, and explicit authorization are all present.
+- [x] Provider audio never leaves the device before authorization, and provider credentials remain server-only.
 - [ ] Uploading, cloning, success, failure, cancellation, and retry states identify the selected friend and remain usable after tab switches.
-- [ ] A successful clone binds the returned voice reference to exactly the selected friend and does not modify other friends.
-- [ ] Changing friends during in-flight work cannot apply a stale result to the new selection.
-- [ ] The text destination remains the only place to create a friend; the voice destination only adds or replaces voice configuration.
+- [x] A successful clone binds the returned voice reference to exactly the selected friend and does not modify other friends.
+- [x] Changing friends during in-flight work cannot apply a stale result to the new selection.
+- [x] The text destination remains the only place to create a friend; the voice destination only adds or replaces voice configuration.
 - [ ] Tests cover consent gating, friend identity propagation, stale-result rejection, provider errors, successful binding, and subsequent TTS use of the bound voice.

@@ -4,7 +4,7 @@
 
 **Blocked by:** 03: Create an AI friend from a real-LLM editable life profile.
 
-**Status:** ready-for-agent
+**Status:** in progress
 
 **Implementation seam:** `AIFriendRepository` is the public persistence boundary; the App may use a file-backed implementation, but views and voice/session code must not depend on its storage format.
 

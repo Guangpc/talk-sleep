@@ -1,5 +1,9 @@
 import Foundation
 
+public enum AIFriendRepositoryError: Error, Equatable, Sendable {
+    case friendNotFound
+}
+
 public struct StoredAIFriend: Codable, Equatable, Identifiable, Sendable {
     public let id: UUID
     public var name: String
@@ -26,6 +30,7 @@ public protocol AIFriendRepository: Sendable {
     func loadAll() throws -> [StoredAIFriend]
     func save(_ friend: StoredAIFriend) throws
     func delete(id: UUID) throws
+    func bindVoice(_ voiceReference: String, to friendID: UUID) throws -> StoredAIFriend
 }
 
 public final class FileAIFriendRepository: AIFriendRepository, @unchecked Sendable {
@@ -65,6 +70,18 @@ public final class FileAIFriendRepository: AIFriendRepository, @unchecked Sendab
             var envelope = try readEnvelope()
             envelope.friends.removeAll { $0.id == id }
             try write(envelope)
+        }
+    }
+
+    public func bindVoice(_ voiceReference: String, to friendID: UUID) throws -> StoredAIFriend {
+        try lock.withLock {
+            var envelope = try readEnvelope()
+            guard let index = envelope.friends.firstIndex(where: { $0.id == friendID }) else {
+                throw AIFriendRepositoryError.friendNotFound
+            }
+            envelope.friends[index].voiceReference = voiceReference
+            try write(envelope)
+            return envelope.friends[index]
         }
     }
 
@@ -109,5 +126,14 @@ public final class InMemoryAIFriendRepository: AIFriendRepository, @unchecked Se
 
     public func delete(id: UUID) throws {
         try lock.withLock { friends.removeValue(forKey: id) }
+    }
+
+    public func bindVoice(_ voiceReference: String, to friendID: UUID) throws -> StoredAIFriend {
+        try lock.withLock {
+            guard var friend = friends[friendID] else { throw AIFriendRepositoryError.friendNotFound }
+            friend.voiceReference = voiceReference
+            friends[friendID] = friend
+            return friend
+        }
     }
 }

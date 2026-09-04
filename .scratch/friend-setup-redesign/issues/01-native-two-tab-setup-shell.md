@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** in progress
 
 - [x] A native bottom tab bar switches between clearly labelled “文字与文件” and “朋友语音” destinations.
 - [x] Text/file controls appear only on the text destination; voice intake controls appear only on the voice destination.

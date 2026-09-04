@@ -19,6 +19,7 @@ struct FriendListView: View {
     @State private var friendContext = ""
     @State private var analysisDraft = ""
     @State private var selectedAudio: PendingAudio?
+    @State private var existingFriendID: UUID?
     @State private var consentConfirmed = false
     @State private var isImportingAudio = false
     @State private var isImportingText = false
@@ -40,6 +41,18 @@ struct FriendListView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     workspaceHeader
+                    if let existingFriend = voiceSession.persistedFriends.first {
+                        Label("已载入好友：\(existingFriend.name)", systemImage: "arrow.clockwise.circle")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .onAppear {
+                                if existingFriendID == nil {
+                                    existingFriendID = existingFriend.id
+                                    friendName = existingFriend.name
+                                    analysisDraft = existingFriend.reviewedProfile
+                                }
+                            }
+                    }
                     profileEditor
                     sourceEditor
                     primaryAction

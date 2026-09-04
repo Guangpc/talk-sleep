@@ -537,6 +537,14 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         return try await client.clone(source: source, requestedVoiceId: requestedVoiceID)
     }
 
+
+    func bindClonedVoice(_ voice: VoiceConfiguration, to friendID: UUID) throws -> StoredAIFriend {
+        let friend = try friendRepository.bindVoice(voice.reference, to: friendID)
+        guard self.friendID == friendID else { return friend }
+        _ = configureFriend(name: friend.name, voice: voice, context: friend.reviewedProfile)
+        return friend
+    }
+
     deinit {
         replyTask?.cancel()
         audio.end()

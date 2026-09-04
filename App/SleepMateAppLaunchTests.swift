@@ -62,6 +62,18 @@ final class SleepMateAppLaunchTests: XCTestCase {
         XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
     }
 
+    func testVoiceTabShowsExistingFriendSelectorAndVoicePicker() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
+        app.launch()
+        let voiceTab = app.tabBars.buttons["朋友语音"]
+        XCTAssertTrue(voiceTab.waitForExistence(timeout: 3))
+        voiceTab.tap()
+        XCTAssertTrue(app.staticTexts["为 AI 好友添加声音"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["还没有 AI 好友"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["创建 AI 好友"].exists)
+    }
+
     func testChoosingFriendVoicePresentsDocumentPickerBeforeUploadConsent() {
         let app = XCUIApplication()
         app.launchArguments += ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]

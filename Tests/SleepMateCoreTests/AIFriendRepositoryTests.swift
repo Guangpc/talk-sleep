@@ -38,4 +38,38 @@ final class AIFriendRepositoryTests: XCTestCase {
         XCTAssertEqual(friends.first?.voiceReference, "voice://clone")
     }
 
+    func testBindingVoiceUpdatesOnlySelectedFriend() throws {
+        let repository = InMemoryAIFriendRepository()
+        let first = StoredAIFriend(
+            id: UUID(),
+            name: "小林",
+            reviewedProfile: "性格：温和",
+            voiceReference: "voice://stock-a",
+            createdAt: Date(timeIntervalSince1970: 100)
+        )
+        let selected = StoredAIFriend(
+            id: UUID(),
+            name: "阿哲",
+            reviewedProfile: "性格：幽默",
+            voiceReference: "voice://stock-b",
+            createdAt: Date(timeIntervalSince1970: 200)
+        )
+        try repository.save(first)
+        try repository.save(selected)
+
+        let updated = try repository.bindVoice("voice://clone-zhe", to: selected.id)
+
+        XCTAssertEqual(updated.id, selected.id)
+        XCTAssertEqual(updated.voiceReference, "voice://clone-zhe")
+        XCTAssertEqual(try repository.loadAll(), [first, updated])
+    }
+
+    func testBindingVoiceRequiresExistingSelectedFriend() throws {
+        let repository = InMemoryAIFriendRepository()
+
+        XCTAssertThrowsError(try repository.bindVoice("voice://clone", to: UUID())) { error in
+            XCTAssertEqual(error as? AIFriendRepositoryError, .friendNotFound)
+        }
+    }
+
 }
