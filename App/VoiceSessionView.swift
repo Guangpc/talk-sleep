@@ -4,6 +4,81 @@ import SwiftUI
 import SleepMateCore
 
 
+private struct SleepMateGatewayConfiguration {
+    let baseURL: URL
+    let token: String
+    let voice: VoiceConfiguration
+    let model: LLMModel
+    let reasoningEffort: LLMReasoningEffort
+
+    static func current(
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        voiceIDOverride: String? = nil
+    ) -> Self? {
+        guard
+            let rawURL = environment["SLEEPMATE_GATEWAY_URL"],
+            let baseURL = URL(string: rawURL),
+            baseURL.scheme != nil,
+            baseURL.host != nil,
+            let token = environment["SLEEPMATE_GATEWAY_TOKEN"],
+            !token.isEmpty
+        else { return nil }
+
+        let voiceID = voiceIDOverride ?? environment["SLEEPMATE_VOICE_ID"]
+        guard let voiceID,
+              !voiceID.isEmpty,
+              !voiceID.contains(where: { $0.isWhitespace }) else { return nil }
+
+        let model: LLMModel
+        switch environment["SLEEPMATE_LLM_MODEL"] {
+        case nil, LLMModel.gpt56Sol.rawValue:
+            model = .gpt56Sol
+        case LLMModel.gpt56Terra.rawValue:
+            model = .gpt56Terra
+        default:
+            return nil
+        }
+        let reasoningEffort: LLMReasoningEffort
+        switch environment["SLEEPMATE_LLM_REASONING"] {
+        case nil, LLMReasoningEffort.medium.rawValue:
+            reasoningEffort = .medium
+        case LLMReasoningEffort.high.rawValue:
+            reasoningEffort = .high
+        case LLMReasoningEffort.xhigh.rawValue:
+            // xhigh is reserved for profiling/summaries, not live dialogue.
+            return nil
+        default:
+            return nil
+        }
+        return Self(
+            baseURL: baseURL,
+            token: token,
+            voice: VoiceConfiguration(reference: voiceID),
+            model: model,
+            reasoningEffort: reasoningEffort
+        )
+    }
+
+    func makeReplyPipeline() -> VoiceReplyPipeline {
+        let llmEndpoint = baseURL
+            .appendingPathComponent("v1")
+            .appendingPathComponent("llm")
+            .appendingPathComponent("chat")
+        return VoiceReplyPipeline(
+            llm: OpenAINextGatewayClient(gatewayEndpoint: llmEndpoint, gatewayToken: token),
+            tts: MiniMaxGatewayTTSService(baseURL: baseURL, gatewayToken: token)
+        )
+    }
+}
+
+private enum VoiceSessionConfigurationError: Error, LocalizedError {
+    case gatewayUnavailable
+
+    var errorDescription: String? {
+        String(localized: "ai_friend.gateway_unavailable")
+    }
+}
+
 private enum VoiceLocale {
     static var preferredLanguage: String {
         Locale.preferredLanguages.first ?? "zh-Hans"
@@ -13,9 +88,9 @@ private enum VoiceLocale {
         preferredLanguage.hasPrefix("en") ? "en-US" : "zh-CN"
     }
 }
-private final class LiveSpeechAudioSession: NSObject, @unchecked Sendable, AudioSession, AVSpeechSynthesizerDelegate {
+private final class LiveSpeechAudioSession: NSObject, @unchecked Sendable, AudioSession, AVAudioPlayerDelegate {
     private let audioEngine = AVAudioEngine()
-    private let synthesizer = AVSpeechSynthesizer()
+    private var audioPlayer: AVAudioPlayer?
     private let recognizer: SFSpeechRecognizer?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
@@ -32,7 +107,6 @@ private final class LiveSpeechAudioSession: NSObject, @unchecked Sendable, Audio
     override init() {
         recognizer = SFSpeechRecognizer(locale: Locale(identifier: VoiceLocale.speechLanguageIdentifier))
         super.init()
-        synthesizer.delegate = self
     }
 
     func requestMicrophonePermission(completion: @escaping (Bool) -> Void) {
@@ -178,21 +252,40 @@ private final class LiveSpeechAudioSession: NSObject, @unchecked Sendable, Audio
         }
     }
 
-    func speak(_ text: String) {
+    @discardableResult
+    func play(audio: Data) -> Bool {
         stopPlayback()
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = AVSpeechSynthesisVoice(language: VoiceLocale.speechLanguageIdentifier)
-        utterance.rate = 0.48
-        synthesizer.speak(utterance)
-    }
-
-    func stopPlayback() {
-        if synthesizer.isSpeaking {
-            synthesizer.stopSpeaking(at: .immediate)
+        do {
+            let player = try AVAudioPlayer(data: audio)
+            player.delegate = self
+            audioPlayer = player
+            guard player.play() else {
+                audioPlayer = nil
+                onError?(String(localized: "voice_session.playback_error"))
+                return false
+            }
+            return true
+        } catch {
+            audioPlayer = nil
+            onError?(String(localized: "voice_session.playback_error"))
+            return false
         }
     }
 
-    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+    func stopPlayback() {
+        audioPlayer?.stop()
+        audioPlayer = nil
+    }
+
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        guard audioPlayer === player else { return }
+        audioPlayer = nil
+        guard flag else {
+            DispatchQueue.main.async { [weak self] in
+                self?.onError?(String(localized: "voice_session.playback_error"))
+            }
+            return
+        }
         DispatchQueue.main.async { [weak self] in
             self?.onPlaybackFinished?()
         }
@@ -222,6 +315,7 @@ private enum LiveSpeechError: LocalizedError {
     }
 }
 
+@MainActor
 final class VoiceSessionViewModel: NSObject, ObservableObject {
     @Published private(set) var state: VoiceSessionState = .idle
     @Published private(set) var transcript = ""
@@ -231,34 +325,119 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
 
     private var coordinator = VoiceSessionCoordinator()
     private let audio = LiveSpeechAudioSession()
+    private var replyPipeline: VoiceReplyPipeline?
+    private var voiceConfiguration: VoiceConfiguration
+    private var model: LLMModel
+    private var reasoningEffort: LLMReasoningEffort
+    @Published private(set) var friendName = "AI Friend"
+    private var friendContext = ""
+    @Published private(set) var friendReady = false
     private var responseTimer: Timer?
+    private var replyTask: Task<Void, Never>?
+    private var pendingAudio: Data?
+    private var pendingConversationAssistant: String?
+    private var conversation: [LLMMessage] = []
     private var latestTranscript = ""
     private var lastRespondedTranscript = ""
 
-    override init() {
+    override convenience init() {
+        let configuration = SleepMateGatewayConfiguration.current()
+        self.init(
+            replyPipeline: configuration?.makeReplyPipeline(),
+            voiceConfiguration: configuration?.voice ?? VoiceConfiguration(reference: "voice://unconfigured"),
+            model: configuration?.model ?? .gpt56Sol,
+            reasoningEffort: configuration?.reasoningEffort ?? .medium
+        )
+    }
+
+    init(
+        replyPipeline: VoiceReplyPipeline?,
+        voiceConfiguration: VoiceConfiguration,
+        model: LLMModel,
+        reasoningEffort: LLMReasoningEffort
+    ) {
+        self.replyPipeline = replyPipeline
+        self.voiceConfiguration = voiceConfiguration
+        self.model = model
+        self.reasoningEffort = reasoningEffort
         super.init()
         audio.onSpeechStarted = { [weak self] in
-            self?.handle(.userSpeechStarted)
+            Task { @MainActor in self?.handle(.userSpeechStarted) }
         }
         audio.onTranscript = { [weak self] text, isFinal in
-            self?.receiveTranscript(text, isFinal: isFinal)
+            Task { @MainActor in self?.receiveTranscript(text, isFinal: isFinal) }
         }
         audio.onPlaybackFinished = { [weak self] in
-            self?.handle(.playbackFinished)
+            Task { @MainActor in self?.handle(.playbackFinished) }
         }
         audio.onError = { [weak self] message in
-            self?.errorMessage = message
+            Task { @MainActor in self?.errorMessage = message }
         }
+    }
+
+    func beginFriendSetup() {
+        replyTask?.cancel()
+        pendingAudio = nil
+        pendingConversationAssistant = nil
+        conversation.removeAll()
+        response = ""
+        transcript = ""
+        errorMessage = ""
+        friendReady = false
+    }
+
+    func configureFriend(name: String, voice: VoiceConfiguration, context: String) -> Bool {
+        guard let configuration = SleepMateGatewayConfiguration.current(voiceIDOverride: voice.reference) else {
+            return false
+        }
+        replyPipeline = configuration.makeReplyPipeline()
+        voiceConfiguration = voice
+        model = configuration.model
+        reasoningEffort = configuration.reasoningEffort
+        friendName = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "AI Friend" : name.trimmingCharacters(in: .whitespacesAndNewlines)
+        friendContext = context.trimmingCharacters(in: .whitespacesAndNewlines)
+        friendReady = true
+        return true
+    }
+
+    func configureFriendUsingEnvironment(name: String, context: String) -> Bool {
+        guard let configuration = SleepMateGatewayConfiguration.current() else { return false }
+        return configureFriend(name: name, voice: configuration.voice, context: context)
+    }
+
+    func cloneVoice(source: AuthorizedVoiceSource) async throws -> VoiceConfiguration {
+        guard let configuration = SleepMateGatewayConfiguration.current(voiceIDOverride: "pending-voice") else {
+            throw VoiceSessionConfigurationError.gatewayUnavailable
+        }
+        let client = MiniMaxGatewayVoiceCloneClient(
+            baseURL: configuration.baseURL,
+            gatewayToken: configuration.token
+        )
+        let requestedVoiceID = "sleepmate-\(UUID().uuidString.lowercased())"
+        return try await client.clone(source: source, requestedVoiceId: requestedVoiceID)
     }
 
     deinit {
         responseTimer?.invalidate()
+        replyTask?.cancel()
         audio.end()
     }
 
     func start() {
         errorMessage = ""
         responseTimer?.invalidate()
+        replyTask?.cancel()
+        pendingAudio = nil
+        pendingConversationAssistant = nil
+        conversation.removeAll()
+        if !friendContext.isEmpty {
+            conversation.append(LLMMessage(role: .system, content: friendContext))
+        }
+        latestTranscript = ""
+        lastRespondedTranscript = ""
+        transcript = ""
+        response = ""
+        responseWasInterrupted = false
         audio.requestSpeechPermissionAndStart { [weak self] granted in
             guard let self else { return }
             guard granted else {
@@ -273,7 +452,8 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
     }
 
     func pause() {
-        transition(.pause)
+        responseTimer?.invalidate()
+        handle(.pause)
     }
 
     func resume() {
@@ -282,7 +462,7 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
 
     func end() {
         responseTimer?.invalidate()
-        transition(.end)
+        handle(.end)
     }
 
     var stateLabel: String {
@@ -303,6 +483,20 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         }
     }
 
+    var gatewayStatusLabel: String {
+        replyPipeline == nil
+            ? String(localized: "voice_session.network.local")
+            : String(localized: "voice_session.network.connected")
+    }
+
+    var gatewayStatusIcon: String {
+        replyPipeline == nil ? "network.slash" : "network"
+    }
+
+    var modelStatusLabel: String {
+        "\(model.rawValue) · \(reasoningEffort.rawValue)"
+    }
+
     private func receiveTranscript(_ text: String, isFinal: Bool) {
         guard !text.isEmpty else { return }
         transcript = text
@@ -310,7 +504,7 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         responseTimer?.invalidate()
         let delay: TimeInterval = isFinal ? 0.2 : 1.2
         responseTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
-            self?.respondIfNeeded()
+            Task { @MainActor [weak self] in self?.respondIfNeeded() }
         }
     }
 
@@ -318,13 +512,68 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         guard coordinator.state == .listening else { return }
         let text = latestTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, text != lastRespondedTranscript else { return }
+        guard let replyPipeline else {
+            errorMessage = String(localized: "voice_session.gateway_unavailable")
+            return
+        }
+
         lastRespondedTranscript = text
-        let format = String(localized: "voice_session.demo_response_format")
-        let localResponse = String(format: format, locale: .current, text)
-        transition(.responseReady(localResponse))
+        replyTask?.cancel()
+        let history = conversation
+        let voiceConfiguration = self.voiceConfiguration
+        let model = self.model
+        let reasoningEffort = self.reasoningEffort
+        replyTask = Task { [weak self, replyPipeline, voiceConfiguration, model, reasoningEffort] in
+            do {
+                let reply = try await replyPipeline.reply(
+                    to: text,
+                    history: history,
+                    voice: voiceConfiguration,
+                    model: model,
+                    reasoningEffort: reasoningEffort
+                )
+                guard !Task.isCancelled else { return }
+                Task { @MainActor [weak self] in
+                    self?.completeReply(reply, for: text)
+                }
+            } catch {
+                guard !Task.isCancelled else { return }
+                Task { @MainActor [weak self] in
+                    guard let self, self.latestTranscript.trimmingCharacters(in: .whitespacesAndNewlines) == text else { return }
+                    if let pipelineError = error as? VoiceReplyPipelineError, pipelineError == .cancelled { return }
+                    self.errorMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func completeReply(_ reply: VoiceReply, for userText: String) {
+        guard coordinator.state == .listening,
+              latestTranscript.trimmingCharacters(in: .whitespacesAndNewlines) == userText,
+              !reply.audio.isEmpty else { return }
+        conversation.append(LLMMessage(role: .user, content: userText))
+        pendingConversationAssistant = reply.text
+        pendingAudio = reply.audio
+        transition(.responseReady(reply.text))
     }
 
     private func handle(_ event: VoiceSessionEvent) {
+        switch event {
+        case .userSpeechStarted, .pause, .end:
+            replyTask?.cancel()
+            pendingAudio = nil
+            if coordinator.state == .speaking {
+                // The generated text remains visible but is not promoted to the next context as a completed turn.
+                pendingConversationAssistant = nil
+            }
+        case .playbackFinished:
+            if let assistantText = pendingConversationAssistant {
+                conversation.append(LLMMessage(role: .assistant, content: assistantText))
+                pendingConversationAssistant = nil
+            }
+        default:
+            break
+        }
         transition(event)
     }
 
@@ -349,7 +598,17 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
                 response = text
                 responseWasInterrupted = false
                 state = .speaking
-                audio.speak(text)
+                guard let audioData = pendingAudio else {
+                    errorMessage = String(localized: "voice_session.playback_error")
+                    _ = coordinator.handle(.playbackFinished)
+                    state = .listening
+                    return
+                }
+                pendingAudio = nil
+                if !audio.play(audio: audioData) {
+                    pendingConversationAssistant = nil
+                    transition(.playbackFinished)
+                }
             case .stopPlayback:
                 audio.stopPlayback()
             case .listeningResumed:
@@ -383,7 +642,7 @@ struct VoiceSessionView: View {
                 .foregroundStyle(session.state == .listening ? Color.accentColor : Color.secondary)
                 .accessibilityLabel(String(localized: "voice_session.status"))
 
-            Text(String(localized: "voice_session.friend_name"))
+            Text(session.friendName)
                 .font(.headline)
 
             Text(session.stateLabel)
@@ -392,7 +651,8 @@ struct VoiceSessionView: View {
 
             HStack(spacing: 12) {
                 Label(session.microphoneStatusLabel, systemImage: "mic.fill")
-                Label(String(localized: "voice_session.network.local"), systemImage: "network.slash")
+                Label(session.gatewayStatusLabel, systemImage: session.gatewayStatusIcon)
+                Label(session.modelStatusLabel, systemImage: "cpu")
             }
             .font(.caption)
             .foregroundStyle(.secondary)

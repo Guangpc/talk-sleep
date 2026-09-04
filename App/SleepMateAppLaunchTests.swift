@@ -17,7 +17,9 @@ final class SleepMateAppLaunchTests: XCTestCase {
 
         XCTAssertTrue(app.navigationBars["AI 好友"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.staticTexts["AI 好友"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["还没有 AI 好友"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.buttons["开始真机语音测试"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["创建 AI 好友"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["导入文字文件"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["选择朋友声音"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["创建 AI 好友"].waitForExistence(timeout: 3))
     }
 }

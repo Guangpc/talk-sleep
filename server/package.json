@@ -1,0 +1,9 @@
+{
+  "name": "sleepmate-gateway",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test gateway.test.mjs config.test.mjs index.test.mjs providers/**/*.test.mjs",
+    "start": "node index.mjs"
+  }
+}

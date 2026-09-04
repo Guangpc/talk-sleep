@@ -9,3 +9,7 @@ xcuserdata/
 
 # macOS
 .DS_Store
+# Local API credentials
+.env
+.env.local
+.env.*.local

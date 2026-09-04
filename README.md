@@ -1,6 +1,6 @@
 # SleepMate
 
-SleepMate 是面向中国大陆、iOS 优先的 AI 好友睡前语音陪聊 MVP。项目当前已完成 Foundation（工程骨架与可测试域核心），并跑通一条真实 iPhone 语音会话 tracer：真实麦克风、Apple Speech 实时转写、系统本地朗读和普通音量打断。云端 AI 对话与声音克隆尚未接入。
+SleepMate 是面向中国大陆、iOS 优先的 AI 好友睡前语音陪聊 MVP。项目当前已完成 Foundation，并接通一条由真实麦克风、Apple Speech 实时转写、server gateway、OpenAI-compatible LLM 和 MiniMax Speech 2.8 HD TTS 组成的 AI 语音会话 tracer。真实朋友声音的授权证明、provider-side 删除传播、会话持久化和生产合规门仍未完成。
 
 ## 当前基准
 
@@ -20,16 +20,16 @@ SleepMate 是面向中国大陆、iOS 优先的 AI 好友睡前语音陪聊 MVP�
 - PRD 域类型、可注入 `SleepMateClock`、产品时长常量、睡眠会话状态机和好友创建流水线 seam。
 - `AudioSession`、`ASRService`、`TTSService`、`MaterialAnalysisService`、`SleepMateStore` interface。
 - SwiftUI iOS 壳、中文/英文本地化、自动签名工程和 XCUITest target。
-- 7 张 Foundation ticket 已按依赖完成并记录在 `.scratch/foundation/issues/`。
+- Foundation tickets 已按依赖完成并记录在 `.scratch/foundation/issues/`；provider/gateway/voice-session 进度记录在各自 `.scratch/*/issues/`。
 
 ### 真实语音 tracer
 
 - `VoiceSessionCoordinator`：纯状态/effect reducer，覆盖开始、回复播放、播放完成、用户打断、暂停、恢复和结束。
 - `VoiceActivityDetector`：基于环境底噪的纯 RMS onset 检测；普通说话音量不依赖固定高阈值，连续帧过滤单次毛刺。
-- iOS `AudioSession` adapter：`AVAudioSession(.playAndRecord/.voiceChat)`、`AVAudioEngine` 输入 tap、voice processing/AEC、Apple Speech 流式转写和 `AVSpeechSynthesizer` 本地朗读。
-- SwiftUI 会话页进入后自动开始聆听，显示“正在聆听/已暂停/已结束”、麦克风与云端连接状态、实时转写、已生成回复和明确的 AI/本地演示标识。
+- iOS `AudioSession` adapter：`AVAudioSession(.playAndRecord/.voiceChat)`、`AVAudioEngine` 输入 tap、voice processing/AEC、Apple Speech 流式转写和 `AVAudioPlayer` gateway 音频播放。
+- `VoiceReplyPipeline` 把同一轮 transcript、会话文字 history、选定模型/推理档位和 AI 好友 voice reference 串成真实 LLM→TTS 请求；不完整或空的 LLM stream 不生成 TTS/fake success。
 - App 不持久化原始音频；当前音频交给 Apple Speech 识别，系统可能使用网络处理，不能表述为完全本地 ASR。
-- 当前回复是本地固定测试文案，不代表 LLM；当前朗读是系统声音，不代表好友声音克隆或已接入云端 TTS。
+- SwiftUI 会话页进入后自动开始聆听，显示“正在聆听/已暂停/已结束”、麦克风与 gateway 状态、实时转写、AI 回复和打断标记。App 只读取 app-to-gateway 配置；provider keys 只存在 server runtime，绝不进入 iOS。
 
 ## 验证
 
@@ -45,15 +45,15 @@ xcodebuild build-for-testing \
   CODE_SIGNING_ALLOWED=NO
 ```
 
-`swift test` 当前覆盖 24 个 Core 测试。generic `build-for-testing` 会编译 App 与 XCUITest target；本机没有可用 Simulator runtime 时不能执行模拟器 UI 测试。
+`swift test` 当前覆盖 49 个 Core 测试。generic `build-for-testing` 会编译 App 与 XCUITest target；本机没有可用 Simulator runtime 时不能执行模拟器 UI 测试。
 
-2026-09-03 已在 iPhone 12（iPhone13,2，iOS 18.5）完成签名构建、安装和启动；真实麦克风、中文转写、本地朗读均成功。固定 RMS 阈值导致普通音量打断偶发失败后，已改为自适应 VAD + voice processing/AEC，并由用户连续 3 次以普通音量验证打断成功。完整证据和未执行项见 [`docs/test-matrix.md`](docs/test-matrix.md)。
+2026-09-03 已在 iPhone 12（iPhone13,2，iOS 18.5）完成签名构建、安装和启动；真实麦克风、中文转写、本地朗读均成功。AI gateway/Core 自动验证已完成，但真实 iPhone LLM→MiniMax 音频回归、普通音量 AI 打断和中断恢复仍待补。完整证据和未执行项见 [`docs/test-matrix.md`](docs/test-matrix.md)。
 
 ## 目录结构
 
 ```text
-App/                         SwiftUI 壳、真实 iOS 音频 adapter、本地化资源
-Sources/SleepMateCore/       平台无关域模型、状态机、协议、语音协调器与 VAD
+App/                         SwiftUI 壳、真实 iOS 音频 adapter、gateway 配置、本地化资源
+Sources/SleepMateCore/       域模型、状态机、协议、gateway edge clients、reply pipeline 与 VAD
 Tests/SleepMateCoreTests/    域核心 XCTest
 SleepMate.xcodeproj/         iOS App 与 XCUITest target
 .scratch/foundation/         Foundation spec、依赖图与 tickets
@@ -63,10 +63,26 @@ research/                    Apple/隐私/后台音频研究
 
 ## 尚未实现
 
-1. **真实 AI 对话**：经批准的云端 LLM、错误/重试、弱网行为和供应商不训练保证。
-2. **好友声音**：获授权声音素材处理、声音配置、真实 TTS/声音克隆与删除传播。
+1. **生产 AI 对话 hardening**：会话文字本地记录、terminal-result persistence、重试/退避、弱网/offline 和供应商不训练保证。
+2. **好友声音生产授权链**：当前已有 consent-gated intake、上传、clone 和进程内 binding；授权证明、preview-confirm、缓存、删除传播和生产音频策略仍待完成。
 3. **完整设备行为**：音频中断、锁屏/后台、通知、最低支持机型、噪声/多人环境和长会话稳定性。
-4. **创建 AI 好友**：相册/分享/文件导入、OCR、素材 ASR、说话人分析、编辑与确认 UI。
+4. **完整创建 AI 好友**：当前已有文字输入/UTF-8 文件导入和 consent-gated 音频 clone；OCR、素材 ASR、说话人分析、编辑与持久化 profile UI 仍待完成。
 5. **数据与合规**：本地记录、30 天过期、逐类删除、导出、Privacy Manifest 和 App Store 审核材料。
+
+### 本地 App gateway 配置
+
+先按 [`server/README.md`](server/README.md) 启动 gateway，再在 Xcode Run Scheme 的 Environment Variables 中注入：
+
+```text
+SLEEPMATE_GATEWAY_URL=http://127.0.0.1:8787
+SLEEPMATE_GATEWAY_TOKEN=<从本地 .env.local 读取，绝不提交或写入源码>
+SLEEPMATE_LLM_MODEL=gpt-5.6-sol   # 可选：gpt-5.6-terra
+SLEEPMATE_LLM_REASONING=medium     # live dialogue: medium/high；xhigh/unknown 会拒绝配置
+SLEEPMATE_VOICE_ID=<已获授权并由 gateway 绑定的 voice id>
+```
+
+这些是 app-to-gateway 配置，不是 provider API keys；未知 model/profile、xhigh live dialogue 或缺少 voice binding 会拒绝启用，不会静默降级。真机应使用 HTTPS gateway，且不能把本地 `.env.local` 直接复制进 App bundle。
+
+完整 route contract、导入顺序与本地运维命令见 [`docs/integration-guide.md`](docs/integration-guide.md) 和 [`docs/runbook.md`](docs/runbook.md)。
 
 任何未配置的 ASR/LLM/TTS/云端能力都必须在 UI 与文档中明确标示，不能用 fake 冒充生产实现。

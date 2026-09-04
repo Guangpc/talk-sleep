@@ -20,9 +20,9 @@
 
 ## Current implementation and verification
 
-Foundation 与真实语音 tracer 已完成：平台无关 `SleepMateCore`、域类型、注入时钟、睡眠会话状态机、好友创建流水线 seam、`VoiceSessionCoordinator`、自适应 `VoiceActivityDetector`、协议契约、SwiftUI 语音页和 XCUITest target。iOS 壳现在接入真实 `AVAudioSession`/`AVAudioEngine`、voice processing/AEC、Apple Speech 实时转写和系统本地 TTS；云端 LLM、好友声音 TTS/克隆、完整后台音频、云端存储和数据删除仍属于后续 spec。架构细节见 [`docs/architecture.md`](docs/architecture.md)，真机结果见 [`docs/test-matrix.md`](docs/test-matrix.md)，人类接手说明见 [`README.md`](README.md)。
+Foundation 与 gateway-backed voice tracer 已完成首条切片：平台无关 `SleepMateCore`、域类型、注入时钟、睡眠会话状态机、好友创建流水线 seam、`VoiceSessionCoordinator`、自适应 `VoiceActivityDetector`、协议契约、SwiftUI 语音页和 XCUITest target；Core 现在包含 server-only credential-free `OpenAINextGatewayClient`、`MiniMaxGatewayTTSService` 和 `VoiceReplyPipeline`。iOS 壳接入真实 `AVAudioSession`/`AVAudioEngine`、voice processing/AEC、Apple Speech 实时转写及 gateway 音频的 `AVAudioPlayer` 播放；LLM local persistence、授权声音证明/preview-confirm、provider-side clone 生命周期、缓存、完整后台音频和数据删除仍属于后续 spec；首条 consent-gated intake→clone→voice binding 已接入。架构细节见 [`docs/architecture.md`](docs/architecture.md)，真机结果见 [`docs/test-matrix.md`](docs/test-matrix.md)，人类接手说明见 [`README.md`](README.md)。
 
 - `swift build` — 编译平台无关域核心。
-- `swift test` — 执行 24 个域核心 XCTest；时间相关测试使用注入时钟，禁止真实 sleep。
+- `swift test` — 执行 49 个域核心 XCTest；时间相关测试使用注入时钟，禁止真实 sleep。
 - `xcodebuild -project SleepMate.xcodeproj -scheme SleepMate -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build-for-testing` — 编译 App 与 XCUITest target；没有 simulator runtime 时不能执行真实 UI 测试。
 - 真机验证使用 `xcodebuild build` + `xcrun devicectl device install app/process launch`；XCUITest Runner 可能因设备 automation mode 超时，不能将该失败误判为 App 签名或安装失败。
