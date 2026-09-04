@@ -31,9 +31,11 @@
 "ai_friend.gateway_unavailable" = "Configure the gateway URL and app token before creating an AI friend.";
 "ai_friend.persistence_error" = "The AI friend was created, but local saving failed. Check device storage and try again.";
 "voice_setup.subtitle" = "Select an existing AI friend, then add an authorized friend voice.";
+"voice_setup.title" = "Add a voice to an AI friend";
 "voice_setup.choose_friend" = "Select AI friend";
 "voice_setup.no_friends" = "No AI friends yet";
 "voice_setup.no_friends_hint" = "Switch to Text & Files to create an AI friend first.";
+"voice_setup.go_to_text" = "Go to Text & Files";
 "voice_setup.selected_friend" = "Selected: %@";
 "voice_setup.choose_audio" = "Choose friend voice";
 "voice_setup.audio_selected" = "Selected audio: %@ · %.1f seconds";
@@ -74,3 +76,15 @@
 "voice_session.gateway_unavailable" = "The AI gateway is not configured; no demo response was generated.";
 "voice_session.playback_error" = "AI voice playback failed. Please retry.";
 "voice_session.recognizer_unavailable" = "Speech recognition is currently unavailable.";
+"voice_source.consent_required" = "Confirm voice authorization before uploading.";
+"voice_source.unsupported_format" = "Choose an MP3, M4A, or WAV audio file.";
+"voice_source.empty_audio" = "The selected audio file is empty.";
+"voice_source.audio_too_large" = "The audio file must be 20 MB or smaller.";
+"voice_source.duration_out_of_range" = "Clone audio must be between 10 seconds and 5 minutes.";
+"voice_source.invalid_filename" = "The selected filename is invalid.";
+"friend_source.empty" = "Enter friend context before importing it.";
+"friend_source.too_long" = "Friend context is too long.";
+"friend_analysis.empty_source" = "The imported chat record is empty.";
+"friend_analysis.incomplete_reply" = "The friend-profile analysis was incomplete.";
+"friend_analysis.invalid_response" = "The friend-profile analysis could not be read.";
+"friend_analysis.cancelled" = "The friend-profile analysis was cancelled.";

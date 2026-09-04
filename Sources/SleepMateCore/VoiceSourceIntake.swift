@@ -59,12 +59,12 @@ public enum AuthorizedVoiceSourceError: Error, Equatable, Sendable, LocalizedErr
 
     public var errorDescription: String? {
         switch self {
-        case .consentRequired: return "Voice authorization must be confirmed before upload."
-        case .unsupportedAudioFormat: return "Choose an MP3, M4A, or WAV audio file."
-        case .emptyAudio: return "The selected audio file is empty."
-        case .audioTooLarge: return "The audio file must be 20 MB or smaller."
-        case .durationOutOfRange: return "Clone audio must be between 10 seconds and 5 minutes."
-        case .invalidFilename: return "The selected filename is invalid."
+        case .consentRequired: return String(localized: "voice_source.consent_required")
+        case .unsupportedAudioFormat: return String(localized: "voice_source.unsupported_format")
+        case .emptyAudio: return String(localized: "voice_source.empty_audio")
+        case .audioTooLarge: return String(localized: "voice_source.audio_too_large")
+        case .durationOutOfRange: return String(localized: "voice_source.duration_out_of_range")
+        case .invalidFilename: return String(localized: "voice_source.invalid_filename")
         }
     }
 }
@@ -75,8 +75,8 @@ public enum AuthorizedSourceTextError: Error, Equatable, Sendable, LocalizedErro
 
     public var errorDescription: String? {
         switch self {
-        case .empty: return "Enter friend context before importing it."
-        case .tooLong: return "Friend context is too long."
+        case .empty: return String(localized: "friend_source.empty")
+        case .tooLong: return String(localized: "friend_source.too_long")
         }
     }
 }

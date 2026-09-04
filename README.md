@@ -72,17 +72,26 @@ research/                    Apple/隐私/后台音频研究
 
 ### 本地 App gateway 配置
 
-先按 [`server/README.md`](server/README.md) 启动 gateway，再在 Xcode Run Scheme 的 Environment Variables 中注入：
+先按 [`server/README.md`](server/README.md) 启动 gateway。默认监听 `127.0.0.1:8787`，并使用仓库根目录被 Git 忽略的 `.env.local` 读取 server-only provider keys 与 `SLEEPMATE_GATEWAY_TOKEN`。
+
+App 文字与文件页面内置 **Gateway 配置**卡片：
+
+1. Gateway URL 填 `http://127.0.0.1:8787`（App 在模拟器或 Mac 本机运行时）或填你的局域网/HTTPS gateway 地址；
+2. App token 填 `.env.local` 中 `SLEEPMATE_GATEWAY_TOKEN` 的值；
+3. 点击“保存配置”；App token 会保存到 iOS Keychain，页面不会回显 token；
+4. 再点击“总结聊天风格与记忆”或“创建 AI 好友”。
+
+也可以在 Xcode Run Scheme 的 Environment Variables 中注入：
 
 ```text
 SLEEPMATE_GATEWAY_URL=http://127.0.0.1:8787
-SLEEPMATE_GATEWAY_TOKEN=<从本地 .env.local 读取，绝不提交或写入源码>
-SLEEPMATE_LLM_MODEL=gpt-5.6-sol   # 可选：gpt-5.6-terra
-SLEEPMATE_LLM_REASONING=medium     # live dialogue: medium/high；xhigh/unknown 会拒绝配置
-SLEEPMATE_VOICE_ID=<已获授权并由 gateway 绑定的 voice id>
+SLEEPMATE_GATEWAY_TOKEN=<与 server 的 SLEEPMATE_GATEWAY_TOKEN 完全一致>
+SLEEPMATE_LLM_MODEL=gpt-5.6-sol
+SLEEPMATE_LLM_REASONING=medium
+SLEEPMATE_VOICE_ID=<可选；文字-only 好友使用 stock/test voice>
 ```
 
-这些是 app-to-gateway 配置，不是 provider API keys；未知 model/profile、xhigh live dialogue 或缺少 voice binding 会拒绝启用，不会静默降级。真机应使用 HTTPS gateway，且不能把本地 `.env.local` 直接复制进 App bundle。
+`OPENAI_NEXT_API_KEY` 和 `MINIMAX_API_KEY` 只给 server 使用，绝不能填入 App 或 Xcode Scheme。App token 不是 provider key；两者必须与 gateway runtime 的值匹配。
 
 完整 route contract、导入顺序与本地运维命令见 [`docs/integration-guide.md`](docs/integration-guide.md) 和 [`docs/runbook.md`](docs/runbook.md)。
 

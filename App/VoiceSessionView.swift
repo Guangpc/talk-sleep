@@ -397,7 +397,9 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
     private var voiceConfiguration: VoiceConfiguration
     private var model: LLMModel
     private var reasoningEffort: LLMReasoningEffort
+    private weak var gatewaySettings: GatewaySettings?
     @Published private(set) var friendName = "AI Friend"
+    @Published private(set) var persistedFriends: [StoredAIFriend] = []
     private var friendContext = ""
     private var friendID: UUID?
     @Published private(set) var friendReady = false
@@ -410,14 +412,29 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
     private let friendRepository: any AIFriendRepository
 
     override convenience init() {
-        let configuration = SleepMateGatewayConfiguration.current()
+        self.init(gatewaySettings: nil)
+    }
+
+    convenience init(gatewaySettings: GatewaySettings?) {
+        let saved = gatewaySettings?.configuration
+        let environmentConfiguration = SleepMateGatewayConfiguration.current()
+        let configuration = saved.map {
+            SleepMateGatewayConfiguration(
+                baseURL: $0.baseURL,
+                token: $0.appToken,
+                voice: VoiceConfiguration(reference: ProcessInfo.processInfo.environment["SLEEPMATE_VOICE_ID"] ?? "voice://stock-default"),
+                model: Self.model(from: ProcessInfo.processInfo.environment["SLEEPMATE_LLM_MODEL"]),
+                reasoningEffort: Self.reasoning(from: ProcessInfo.processInfo.environment["SLEEPMATE_LLM_REASONING"])
+            )
+        } ?? environmentConfiguration
         let repository = try? FileAIFriendRepository(fileURL: Self.defaultFriendStoreURL)
         self.init(
             replyPipeline: configuration?.makeReplyPipeline(),
-            voiceConfiguration: configuration?.voice ?? VoiceConfiguration(reference: "voice://unconfigured"),
+            voiceConfiguration: configuration?.voice ?? VoiceConfiguration(reference: "voice://stock-default"),
             model: configuration?.model ?? .gpt56Sol,
             reasoningEffort: configuration?.reasoningEffort ?? .medium,
-            friendRepository: repository ?? InMemoryAIFriendRepository()
+            friendRepository: repository ?? InMemoryAIFriendRepository(),
+            gatewaySettings: gatewaySettings
         )
     }
 
@@ -426,14 +443,17 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         voiceConfiguration: VoiceConfiguration,
         model: LLMModel,
         reasoningEffort: LLMReasoningEffort,
-        friendRepository: any AIFriendRepository = InMemoryAIFriendRepository()
+        friendRepository: any AIFriendRepository = InMemoryAIFriendRepository(),
+        gatewaySettings: GatewaySettings? = nil
     ) {
         self.replyPipeline = replyPipeline
         self.voiceConfiguration = voiceConfiguration
         self.model = model
         self.reasoningEffort = reasoningEffort
         self.friendRepository = friendRepository
+        self.gatewaySettings = gatewaySettings
         super.init()
+        reloadPersistedFriends()
         restorePersistedFriend()
         audio.onSpeechStarted = { [weak self] in
             Task { @MainActor in self?.receiveSpeechStarted() }
@@ -452,6 +472,31 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         }
     }
 
+    private static func model(from rawValue: String?) -> LLMModel {
+        rawValue == LLMModel.gpt56Terra.rawValue ? .gpt56Terra : .gpt56Sol
+    }
+
+    private static func reasoning(from rawValue: String?) -> LLMReasoningEffort {
+        rawValue == LLMReasoningEffort.high.rawValue ? .high : .medium
+    }
+
+    private func currentGatewayConfiguration(voiceIDOverride: String? = nil) -> SleepMateGatewayConfiguration? {
+        if let configured = gatewaySettings?.configuration {
+            return SleepMateGatewayConfiguration(
+                baseURL: configured.baseURL,
+                token: configured.appToken,
+                voice: VoiceConfiguration(reference: voiceIDOverride ?? ProcessInfo.processInfo.environment["SLEEPMATE_VOICE_ID"] ?? "voice://stock-default"),
+                model: .gpt56Sol,
+                reasoningEffort: .medium
+            )
+        }
+        return SleepMateGatewayConfiguration.current(voiceIDOverride: voiceIDOverride)
+    }
+
+    private func reloadPersistedFriends() {
+        persistedFriends = (try? friendRepository.loadAll()) ?? []
+    }
+
     func beginFriendSetup() {
         replyTask?.cancel()
         pendingAudio = nil
@@ -461,10 +506,11 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         transcript = ""
         errorMessage = ""
         friendReady = false
+        friendID = nil
     }
 
     func configureFriend(name: String, voice: VoiceConfiguration, context: String) -> Bool {
-        guard let configuration = SleepMateGatewayConfiguration.current(voiceIDOverride: voice.reference) else {
+        guard let configuration = currentGatewayConfiguration(voiceIDOverride: voice.reference) else {
             return false
         }
         replyPipeline = configuration.makeReplyPipeline()
@@ -484,6 +530,7 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         friendID = stored.id
         do {
             try friendRepository.save(stored)
+            reloadPersistedFriends()
         } catch {
             errorMessage = String(localized: "ai_friend.persistence_error")
             return false
@@ -497,8 +544,8 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
     }
 
     private func restorePersistedFriend() {
-        guard let stored = try? friendRepository.loadAll().first,
-              let configuration = SleepMateGatewayConfiguration.current(voiceIDOverride: stored.voiceReference) else { return }
+        guard let stored = persistedFriends.first,
+              let configuration = currentGatewayConfiguration(voiceIDOverride: stored.voiceReference) else { return }
         replyPipeline = configuration.makeReplyPipeline()
         voiceConfiguration = VoiceConfiguration(reference: stored.voiceReference)
         model = configuration.model
@@ -509,24 +556,20 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
         friendReady = true
     }
 
-    var persistedFriends: [StoredAIFriend] {
-        (try? friendRepository.loadAll()) ?? []
-    }
-
     func configureFriendUsingEnvironment(name: String, context: String) -> Bool {
-        guard let configuration = SleepMateGatewayConfiguration.current() else { return false }
+        guard let configuration = currentGatewayConfiguration() else { return false }
         return configureFriend(name: name, voice: configuration.voice, context: context)
     }
 
     func analyzeFriendContext(_ sourceText: String, friendName: String) async throws -> FriendContextAnalysis {
-        guard let configuration = SleepMateGatewayConfiguration.current(voiceIDOverride: "analysis-only") else {
+        guard let configuration = currentGatewayConfiguration(voiceIDOverride: "analysis-only") else {
             throw VoiceSessionConfigurationError.gatewayUnavailable
         }
         return try await configuration.makeFriendContextAnalysisPipeline().analyze(sourceText, friendName: friendName)
     }
 
     func cloneVoice(source: AuthorizedVoiceSource) async throws -> VoiceConfiguration {
-        guard let configuration = SleepMateGatewayConfiguration.current(voiceIDOverride: "pending-voice") else {
+        guard let configuration = currentGatewayConfiguration(voiceIDOverride: "pending-voice") else {
             throw VoiceSessionConfigurationError.gatewayUnavailable
         }
         let client = MiniMaxGatewayVoiceCloneClient(
@@ -538,10 +581,33 @@ final class VoiceSessionViewModel: NSObject, ObservableObject {
     }
 
 
+    @discardableResult
+    func activateFriend(id: UUID) -> Bool {
+        guard let friend = persistedFriends.first(where: { $0.id == id }) else { return false }
+        return activateFriendRecord(friend)
+    }
+
+    @discardableResult
+    private func activateFriendRecord(_ friend: StoredAIFriend) -> Bool {
+        guard let configuration = currentGatewayConfiguration(voiceIDOverride: friend.voiceReference) else {
+            return false
+        }
+        replyPipeline = configuration.makeReplyPipeline()
+        voiceConfiguration = VoiceConfiguration(reference: friend.voiceReference)
+        model = configuration.model
+        reasoningEffort = configuration.reasoningEffort
+        friendID = friend.id
+        friendName = friend.name
+        friendContext = friend.reviewedProfile
+        friendReady = true
+        return true
+    }
+
     func bindClonedVoice(_ voice: VoiceConfiguration, to friendID: UUID) throws -> StoredAIFriend {
         let friend = try friendRepository.bindVoice(voice.reference, to: friendID)
+        reloadPersistedFriends()
         guard self.friendID == friendID else { return friend }
-        _ = configureFriend(name: friend.name, voice: voice, context: friend.reviewedProfile)
+        guard activateFriendRecord(friend) else { throw VoiceSessionConfigurationError.gatewayUnavailable }
         return friend
     }
 

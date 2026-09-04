@@ -1,4 +1,3 @@
-import AVFoundation
 import SwiftUI
 import SleepMateCore
 import UniformTypeIdentifiers
@@ -11,17 +10,17 @@ private enum FriendInputField: Hashable {
 
 struct FriendListView: View {
     @ObservedObject var voiceSession: VoiceSessionViewModel
+    @ObservedObject var gatewaySettings: GatewaySettings
 
-    init(session: VoiceSessionViewModel? = nil) {
-        _voiceSession = ObservedObject(wrappedValue: session ?? VoiceSessionViewModel())
+    init(session: VoiceSessionViewModel? = nil, gatewaySettings: GatewaySettings? = nil) {
+        let resolvedSettings = gatewaySettings ?? GatewaySettings()
+        _voiceSession = ObservedObject(wrappedValue: session ?? VoiceSessionViewModel(gatewaySettings: resolvedSettings))
+        _gatewaySettings = ObservedObject(wrappedValue: resolvedSettings)
     }
     @State private var friendName = ""
     @State private var friendContext = ""
     @State private var analysisDraft = ""
-    @State private var selectedAudio: PendingAudio?
     @State private var existingFriendID: UUID?
-    @State private var consentConfirmed = false
-    @State private var isImportingAudio = false
     @State private var isImportingText = false
     @State private var isAnalyzing = false
     @State private var isWorking = false
@@ -30,9 +29,6 @@ struct FriendListView: View {
     @FocusState private var focusedInput: FriendInputField?
 
     private let validator = AuthorizedVoiceSourceValidator()
-    private let supportedAudioTypes = ["mp3", "m4a", "wav"].compactMap {
-        UTType(filenameExtension: $0, conformingTo: .audio)
-    }
 
     private var isBusy: Bool { isAnalyzing || isWorking }
 
@@ -55,6 +51,7 @@ struct FriendListView: View {
                     }
                     profileEditor
                     sourceEditor
+                    gatewaySettingsCard
                     primaryAction
                 }
                 .padding(.horizontal, 20)
@@ -151,6 +148,10 @@ struct FriendListView: View {
         }
     }
 
+    private var gatewaySettingsCard: some View {
+        GatewaySettingsCard(settings: gatewaySettings)
+    }
+
     private var primaryAction: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button { createFriend() } label: {
@@ -165,39 +166,6 @@ struct FriendListView: View {
             if voiceSession.friendReady {
                 Label(String(localized: "ai_friend.ready"), systemImage: "checkmark.circle.fill")
                     .foregroundStyle(.green)
-            }
-        }
-    }
-
-    private func importAudio(_ result: Result<[URL], Error>) {
-        switch result {
-        case let .failure(error):
-            if (error as NSError).code != NSUserCancelledError {
-                setupError = String(localized: "ai_friend.audio_read_error")
-            }
-        case let .success(urls):
-            guard let url = urls.first else { return }
-            Task { @MainActor in
-                let accessed = url.startAccessingSecurityScopedResource()
-                defer {
-                    if accessed { url.stopAccessingSecurityScopedResource() }
-                }
-                do {
-                    let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey])
-                    if let fileSize = resourceValues.fileSize, fileSize > AuthorizedVoiceSourceValidator.maximumAudioBytes {
-                        throw AuthorizedVoiceSourceError.audioTooLarge
-                    }
-                    let data = try Data(contentsOf: url, options: [.mappedIfSafe])
-                    let duration = try await AVURLAsset(url: url).load(.duration).seconds
-                    selectedAudio = PendingAudio(data: data, filename: url.lastPathComponent, durationSeconds: duration)
-                    setupError = ""
-                } catch let error as AuthorizedVoiceSourceError {
-                    selectedAudio = nil
-                    setupError = error.localizedDescription
-                } catch {
-                    selectedAudio = nil
-                    setupError = String(localized: "ai_friend.audio_read_error")
-                }
             }
         }
     }
@@ -264,7 +232,6 @@ struct FriendListView: View {
     private func createFriend() {
         setupError = ""
         setupStatus = ""
-        voiceSession.beginFriendSetup()
         let contextInput = analysisDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? friendContext
             : analysisDraft
@@ -282,15 +249,12 @@ struct FriendListView: View {
             setupError = error.localizedDescription
             return
         }
-        guard selectedAudio != nil || !context.isEmpty else {
+        guard !context.isEmpty else {
             setupError = String(localized: "ai_friend.source_required")
             return
         }
-        if selectedAudio != nil && !consentConfirmed {
-            setupError = String(localized: "ai_friend.consent_required")
-            return
-        }
 
+        voiceSession.beginFriendSetup()
         setupStatus = String(localized: "ai_friend.creating")
         isWorking = true
         Task { @MainActor in
@@ -298,47 +262,13 @@ struct FriendListView: View {
                 isWorking = false
                 setupStatus = ""
             }
-            do {
-                let voice: VoiceConfiguration
-                if let selectedAudio {
-                    setupStatus = String(localized: "ai_friend.uploading")
-                    let consent = VoiceCloneConsent(
-                        authorized: consentConfirmed,
-                        intendedUseAcknowledged: consentConfirmed,
-                        cloudProcessingAcknowledged: consentConfirmed,
-                        retentionAndDeletionAcknowledged: consentConfirmed,
-                        acceptedAt: Date()
-                    )
-                    let source = try validator.validateCloneAudio(
-                        data: selectedAudio.data,
-                        filename: selectedAudio.filename,
-                        durationSeconds: selectedAudio.durationSeconds,
-                        consent: consent
-                    )
-                    voice = try await voiceSession.cloneVoice(source: source)
-                } else {
-                    guard voiceSession.configureFriendUsingEnvironment(name: friendName, context: context) else {
-                        setupError = String(localized: "ai_friend.gateway_unavailable")
-                        return
-                    }
-                    return
-                }
-                guard voiceSession.configureFriend(name: friendName, voice: voice, context: context) else {
-                    setupError = String(localized: "ai_friend.gateway_unavailable")
-                    return
-                }
-                selectedAudio = nil
-            } catch {
-                setupError = error.localizedDescription
+            guard voiceSession.configureFriendUsingEnvironment(name: friendName, context: context) else {
+                setupError = String(localized: "ai_friend.gateway_unavailable")
+                return
             }
         }
     }
-}
 
-private struct PendingAudio {
-    let data: Data
-    let filename: String
-    let durationSeconds: TimeInterval
 }
 
 #Preview {

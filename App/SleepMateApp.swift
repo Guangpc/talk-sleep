@@ -5,27 +5,35 @@ import UniformTypeIdentifiers
 
 @main
 struct SleepMateApp: App {
-    @StateObject private var session = VoiceSessionViewModel()
+    @StateObject private var gatewaySettings: GatewaySettings
+    @StateObject private var session: VoiceSessionViewModel
+
+    init() {
+        let settings = GatewaySettings()
+        _gatewaySettings = StateObject(wrappedValue: settings)
+        _session = StateObject(wrappedValue: VoiceSessionViewModel(gatewaySettings: settings))
+    }
 
     var body: some Scene {
         WindowGroup {
-            MainTabView(session: session)
+            MainTabView(session: session, gatewaySettings: gatewaySettings)
         }
     }
 }
 
 private struct MainTabView: View {
     @ObservedObject var session: VoiceSessionViewModel
+    @ObservedObject var gatewaySettings: GatewaySettings
     @State private var selectedTab: AppTab = .text
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            TextFriendWorkspace(session: session)
+            TextFriendWorkspace(session: session, gatewaySettings: gatewaySettings)
                 .tabItem { Label("文字与文件", systemImage: "doc.text") }
                 .tag(AppTab.text)
                 .accessibilityIdentifier("text-file-tab")
 
-            VoiceFriendWorkspace(session: session)
+            VoiceFriendWorkspace(session: session, onCreateFriend: { selectedTab = .text })
                 .tabItem { Label("朋友语音", systemImage: "waveform") }
                 .tag(AppTab.voice)
                 .accessibilityIdentifier("voice-tab")
@@ -41,20 +49,23 @@ private enum AppTab: Hashable {
 
 private struct TextFriendWorkspace: View {
     @ObservedObject var session: VoiceSessionViewModel
+    @ObservedObject var gatewaySettings: GatewaySettings
 
     var body: some View {
-        FriendListView(session: session)
+        FriendListView(session: session, gatewaySettings: gatewaySettings)
     }
 }
 
 private struct VoiceFriendWorkspace: View {
     @ObservedObject var session: VoiceSessionViewModel
+    let onCreateFriend: () -> Void
     @State private var selectedFriendID: UUID?
     @State private var selectedAudio: PendingVoiceAudio?
     @State private var consentConfirmed = false
     @State private var isImportingAudio = false
     @State private var isBinding = false
     @State private var bindingTask: Task<Void, Never>?
+    @State private var operationID = UUID()
     @State private var status = ""
     @State private var error = ""
 
@@ -73,7 +84,7 @@ private struct VoiceFriendWorkspace: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("为 AI 好友添加声音")
+                        Text(String(localized: "voice_setup.title"))
                             .font(.largeTitle.bold())
                         Text(String(localized: "voice_setup.subtitle"))
                             .font(.subheadline)
@@ -86,6 +97,9 @@ private struct VoiceFriendWorkspace: View {
                             systemImage: "person.2",
                             description: Text(String(localized: "voice_setup.no_friends_hint"))
                         )
+                        Button(String(localized: "voice_setup.go_to_text"), action: onCreateFriend)
+                            .buttonStyle(.borderedProminent)
+                            .frame(maxWidth: .infinity)
                     } else {
                         friendPicker
                     }
@@ -107,7 +121,7 @@ private struct VoiceFriendWorkspace: View {
                 }
                 .padding(20)
             }
-            .navigationTitle("朋友语音")
+            .navigationTitle(String(localized: "voice_setup.title"))
         }
     }
 
@@ -118,8 +132,10 @@ private struct VoiceFriendWorkspace: View {
             ForEach(session.persistedFriends) { friend in
                 Button {
                     bindingTask?.cancel()
+                    operationID = UUID()
                     isBinding = false
                     selectedFriendID = friend.id
+                    _ = session.activateFriend(id: friend.id)
                     selectedAudio = nil
                     consentConfirmed = false
                     status = ""
@@ -229,7 +245,9 @@ private struct VoiceFriendWorkspace: View {
                     }
                     let data = try Data(contentsOf: url, options: [.mappedIfSafe])
                     let duration = try await AVURLAsset(url: url).load(.duration).seconds
-                    selectedAudio = PendingVoiceAudio(data: data, filename: url.lastPathComponent, durationSeconds: duration)
+                    let localAudio = PendingVoiceAudio(data: data, filename: url.lastPathComponent, durationSeconds: duration)
+                    selectedAudio = localAudio
+                    operationID = UUID()
                     consentConfirmed = false
                     error = ""
                 } catch let validationError as AuthorizedVoiceSourceError {
@@ -251,9 +269,12 @@ private struct VoiceFriendWorkspace: View {
         isBinding = true
         bindingTask?.cancel()
         let requestedFriendID = friend.id
+        let requestedOperationID = UUID()
+        operationID = requestedOperationID
+        let requestedAudio = selectedAudio
         bindingTask = Task { @MainActor in
             defer {
-                if selectedFriendID == requestedFriendID { isBinding = false }
+                if selectedFriendID == requestedFriendID, operationID == requestedOperationID { isBinding = false }
             }
             do {
                 let consent = VoiceCloneConsent(
@@ -270,7 +291,8 @@ private struct VoiceFriendWorkspace: View {
                     consent: consent
                 )
                 let voice = try await session.cloneVoice(source: source)
-                guard !Task.isCancelled, selectedFriendID == requestedFriendID else {
+                guard !Task.isCancelled, selectedFriendID == requestedFriendID, operationID == requestedOperationID,
+                      selectedAudio.filename == requestedAudio.filename else {
                     error = String(localized: "voice_setup.friend_missing")
                     return
                 }
@@ -279,6 +301,7 @@ private struct VoiceFriendWorkspace: View {
                 self.selectedAudio = nil
                 consentConfirmed = false
             } catch let bindingError {
+                guard !Task.isCancelled, selectedFriendID == requestedFriendID, operationID == requestedOperationID else { return }
                 self.error = bindingError.localizedDescription
             }
         }

@@ -5,7 +5,7 @@
 1. 确认本地 `.env.local` 权限为 `600`，且未被 Git 跟踪；不要在终端打印其内容。
 2. 从仓库根目录运行 `node server/index.mjs`。
 3. 另开终端执行 `curl --fail http://127.0.0.1:8787/health`，只确认 `{"ok":true}`。
-4. 在 Xcode Scheme 中只注入 `SLEEPMATE_GATEWAY_URL`、`SLEEPMATE_GATEWAY_TOKEN`、可选 model/reasoning/voice 配置。
+4. 在 App“文字与文件”页的 Gateway 配置卡中填写 URL 与 App token，或在 Xcode Scheme 中注入同名环境变量；App token 会保存在 Keychain，provider keys 绝不进入 App。
 
 ## 自动验证
 
@@ -34,7 +34,7 @@ xcodebuild build-for-testing \
 - `401 gateway_unauthorized`：检查 App token 是否与 server runtime 的 `SLEEPMATE_GATEWAY_TOKEN` 完全一致；不要尝试把 provider key 放入 App。
 - `400 invalid_request`：检查 model/reasoning、消息格式、音频扩展名、base64、大小和时长。
 - `502 provider_*`：只根据稳定 code 判断；查看 server 运行状态和 provider 控制台，不打印 provider body。
-- App 显示 gateway unavailable：检查 URL、App token、voice binding；未知 model/profile、live `xhigh` 和缺少 voice binding 都会拒绝启用。
+- App 显示 gateway unavailable：先确认 `curl --fail http://127.0.0.1:8787/health` 成功，再检查 Gateway 配置卡中的 URL 和 App token 是否与 `.env.local` 的 `SLEEPMATE_GATEWAY_TOKEN` 一致。文字-only 创建不要求自定义 voice ID。
 - 点击“选择朋友声音”没有 picker：选择本地文件不再要求预先勾选授权；确认运行的是包含 `friend-audio-import-button` 的新构建。授权仍在上传/clone 前强制校验。
 - 导入聊天记录后没有画像：点击“总结聊天风格与记忆”，检查 gateway 可达；该请求使用 profiling `xhigh`，结果成功后会显示可编辑摘要。
 - 停止说话仍一直监听：确认 VAD `speechEnded` 已触发 Apple Speech `endAudio()`；若 terminal callback 缺失，1.5 秒 fallback 应使用最后一个非空 partial。随后 UI 应进入 processing 且麦克风暂停；失败后应恢复 listening。本轮代码修复仍需真机复测。

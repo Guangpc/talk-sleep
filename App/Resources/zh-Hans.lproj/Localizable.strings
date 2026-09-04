@@ -31,9 +31,11 @@
 "ai_friend.gateway_unavailable" = "请先配置 gateway URL 和 App token，再创建 AI 好友。";
 "ai_friend.persistence_error" = "AI 好友已创建，但本地保存失败，请检查设备存储空间后重试。";
 "voice_setup.subtitle" = "选择已创建的 AI 好友，再添加经授权的朋友音色。";
+"voice_setup.title" = "为 AI 好友添加声音";
 "voice_setup.choose_friend" = "选择 AI 好友";
 "voice_setup.no_friends" = "还没有 AI 好友";
 "voice_setup.no_friends_hint" = "请先切换到“文字与文件”创建 AI 好友。";
+"voice_setup.go_to_text" = "切换到文字与文件";
 "voice_setup.selected_friend" = "已选择：%@";
 "voice_setup.choose_audio" = "选择朋友声音";
 "voice_setup.audio_selected" = "已选择音频：%@ · %.1f 秒";
@@ -74,3 +76,15 @@
 "voice_session.gateway_unavailable" = "AI gateway 尚未配置；未生成演示回复。";
 "voice_session.playback_error" = "AI 语音播放失败，请重试。";
 "voice_session.recognizer_unavailable" = "当前无法使用语音识别。";
+"voice_source.consent_required" = "上传前必须确认声音授权。";
+"voice_source.unsupported_format" = "请选择 MP3、M4A 或 WAV 音频文件。";
+"voice_source.empty_audio" = "所选音频文件为空。";
+"voice_source.audio_too_large" = "音频文件不能超过 20 MB。";
+"voice_source.duration_out_of_range" = "克隆音频时长必须在 10 秒到 5 分钟之间。";
+"voice_source.invalid_filename" = "所选文件名无效。";
+"friend_source.empty" = "请输入好友资料后再导入。";
+"friend_source.too_long" = "好友资料过长。";
+"friend_analysis.empty_source" = "导入的聊天记录为空。";
+"friend_analysis.incomplete_reply" = "好友画像分析未完成。";
+"friend_analysis.invalid_response" = "无法读取好友画像分析结果。";
+"friend_analysis.cancelled" = "好友画像分析已取消。";

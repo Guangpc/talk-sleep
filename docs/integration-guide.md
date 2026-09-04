@@ -20,20 +20,28 @@ SLEEPMATE_GATEWAY_TOKEN=<app-to-gateway token>
 
 不要把 `.env.local` 复制到 App bundle、Xcode scheme、日志或 GitHub。新 token 应使用本地 secrets wizard 生成/轮换。
 
-## 2. Xcode App 配置
+## 2. App gateway 配置
 
-在本机 Xcode Run Scheme 的 Environment Variables 注入以下值；这些值只用于 App→gateway：
+App 在“文字与文件”页面直接提供 Gateway 配置卡。填写：
+
+```text
+Gateway URL=http://127.0.0.1:8787
+App token=<与 server runtime 的 SLEEPMATE_GATEWAY_TOKEN 一致>
+```
+
+保存后 URL 放入 UserDefaults，App token 放入 Keychain（`AfterFirstUnlockThisDeviceOnly`），页面不会回显 token。后续画像分析、好友创建、voice clone 和对话都会从同一配置快照创建 gateway client。
+
+Xcode Scheme 环境变量仍作为开发备用：
 
 ```text
 SLEEPMATE_GATEWAY_URL=http://127.0.0.1:8787
-SLEEPMATE_GATEWAY_TOKEN=<本地读取，不提交>
+SLEEPMATE_GATEWAY_TOKEN=<app-to-gateway token>
 SLEEPMATE_LLM_MODEL=gpt-5.6-sol
 SLEEPMATE_LLM_REASONING=medium
-# 已完成 clone 后再填写；没有 voice binding 时 App 不启用 AI voice session。
-SLEEPMATE_VOICE_ID=<gateway voice id>
+SLEEPMATE_VOICE_ID=<可选 stock/test 或已绑定 voice id>
 ```
 
-live dialogue 支持 `gpt-5.6-sol` / `gpt-5.6-terra` 与 `medium` / `high`。`xhigh` 只保留给 profiling、personality extraction 或 summary，不会被 live dialogue 静默接受或降级。
+文字-only 好友创建默认使用 stock/test voice reference，不要求先克隆声音。`OPENAI_NEXT_API_KEY` 与 `MINIMAX_API_KEY` 只能存在于 gateway server runtime。
 
 ## 3. iOS 导入顺序
 

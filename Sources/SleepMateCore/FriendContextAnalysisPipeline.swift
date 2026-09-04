@@ -68,13 +68,13 @@ public enum FriendContextAnalysisError: Error, Equatable, Sendable, LocalizedErr
     public var errorDescription: String? {
         switch self {
         case .emptySource:
-            return "The imported chat record is empty."
+            return String(localized: "friend_analysis.empty_source")
         case .incompleteReply:
-            return "The friend-profile analysis was incomplete."
+            return String(localized: "friend_analysis.incomplete_reply")
         case .invalidResponse:
-            return "The friend-profile analysis could not be read."
+            return String(localized: "friend_analysis.invalid_response")
         case .cancelled:
-            return "The friend-profile analysis was cancelled."
+            return String(localized: "friend_analysis.cancelled")
         }
     }
 }
