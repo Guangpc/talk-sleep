@@ -29,6 +29,17 @@
 - iOS 工程：generic `build-for-testing` 成功并编译新增 UI test。2026-09-04 用户真机反馈揭示“选择语音”被上传授权 gate 提前拦截、VAD `speechEnded` 未结束 ASR input；代码已改为允许先选本地文件、上传前再授权，并在尾部静音调用 `endAudio()`、等待 final transcript 后暂停麦克风进入 processing。按用户要求，本轮未重跑真机；新增 picker test、真实 clone、连续对话、静默结束回复、锁屏/中断和 provider-side 声音生命周期仍是发布门。
 
 
+## 真机测试记录（2026-09-05）
+
+### iPhone 12（iPhone13,2）· iOS 18.5 · Debug 1.0
+
+- **构建：PASS**：目标设备 `连我就断网`（device ID `C50D8E57-FD29-5B0E-8C81-23F909982A2F`）真机签名构建成功，使用 `com.sleepmate.app` 开发配置文件。
+- **安装：PASS**：`devicectl` 安装成功。
+- **启动：PASS**：`devicectl` 启动 `com.sleepmate.app` 成功。
+- **Gateway：PASS**：`http://127.0.0.1:8787/health` 返回 `{"ok":true}`；本轮未记录 iPhone 端手动填写配置或 provider 对话结果。
+- **真机 XCUITest：未完成**：单测 `testBottomTabsExposeTextAndVoiceDestinations` 的 runner 未能初始化，结果包显示 `Timed out while enabling automation mode.`；因此没有把 UI 断言误记为 App 功能失败。
+- 结果包：`/tmp/SleepMateRealDeviceUITest.xcresult`。
+
 ## 当前文本编辑菜单自动验证（2026-09-05）
 
 - “聊天记录与文字资料”和“朋友性格 / 好友画像”统一使用可编辑、可选择的原生 `UITextView` adapter，系统 Copy/Cut/Paste/Select All 菜单不再与页面级清焦点手势竞争。
